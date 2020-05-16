@@ -5,8 +5,8 @@ from math import sin, cos, pi
 
 import pygame as pg
 
-pg.init()
-FPS = 90
+#pg.init()
+FPS = 60
 fpsClock = pg.time.Clock()
 
 background_color = (255,255,255)
@@ -15,8 +15,8 @@ line_color       = (0, 255, 0)
 
 drag = 0.999                   # 空気抵抗
 elasticity = 0.75              # 反発係数
-gravity = (pi, 0.002)          # 重力
-bond_strength = None           # 結合強度
+#gravity = (pi, 0.002)          # 重力
+gravity = (pi, 0.01)
 
 def addVectors(angle1, length1, angle2, length2):
     x  = sin(angle1) * length1 + sin(angle2) * length2
@@ -32,22 +32,44 @@ def findParticle(particles, x, y):
             return p
     return None
 
+def collide(p1, p2):
+    dx = p1.x - p2.x
+    dy = p1.y - p2.y
+
+    distance = math.hypot(dx, dy)
+    if distance < p1.size + p2.size:
+        angle = math.atan2(dy, dx) + 0.5 * pi
+        total_mass = p1.mass + p2.mass
+
+        vecp1_x = (p1.angle, p1.speed*(p1.mass-p2.mass)/total_mass)
+        vecp1_y = (angle, 2*p2.speed*p2.mass/total_mass)
+        vecp2_x = (p2.angle, p2.speed*(p2.mass-p1.mass)/total_mass)
+        vecp2_y = (angle+pi, 2*p1.speed*p1.mass/total_mass)
+        p1.angle, p1.speed = addVectors(*vecp1_x, *vecp1_y)
+        p2.angle, p2.speed = addVectors(*vecp2_x, *vecp2_y)
+        p1.speed *= elasticity
+        p2.speed *= elasticity
+
+        overlap = 0.5*(p1.size + p2.size - distance+1)
+        p1.x += sin(angle)*overlap
+        p1.y -= cos(angle)*overlap
+        p2.x -= sin(angle)*overlap
+        p2.y += cos(angle)*overlap
+
 class Particle:
-    def __init__(self, x, y, size):
+    def __init__(self, x, y, size, mass=1):
         self.x = x
         self.y = y
-        self.size = size
+        self.size = size                 # 半径
+        self.mass = mass                 # 質量
         self.circle_color = (0, 0, 255)
         self.line_color = (0, 0, 0)
-        self.thickness = 1
+        self.thickness = 0               # 埋率, 0で全て塗り潰し
         self.speed = 0
         self.angle = 0
 
     def display(self):
         pg.draw.circle(screen, self.circle_color, (int(self.x), int(self.y)), self.size, self.thickness)
-
-    #def tie_up(self):
-    #    pg.draw.lines(screen, self.line_color, closed=False, self.pointlist, width=1)
 
     def move(self):
         (self.angle, self.speed) = addVectors(*(self.angle, self.speed), *gravity)
@@ -80,15 +102,18 @@ screen = pg.display.set_mode((width, height))
 pg.display.set_caption('Tutorial 1')
 screen.fill(background_color)
 
-particle_num = 4
+particle_num = 3
 my_particles = []
 
 for n in range(particle_num):
-    size = random.randint(10, 20)
+    #size = random.randint(10, 20)
+    size = 10
+    density = random.randint(1, 20)     # 密度
     x = random.randint(size, width-size)
     y = random.randint(size, height-size)
 
-    particle = Particle(x, y, size)
+    particle = Particle(x, y, size, density*size**2)
+    particle.color = (200-density*10, 200-density*10, 255)
     particle.speed = random.random()
     particle.angle = random.uniform(0, pi*2)
 
@@ -104,14 +129,16 @@ while running:
             (mouseX, mouseY) = pg.mouse.get_pos()
             selected_particle = findParticle(my_particles, mouseX, mouseY)
         elif event.type == pg.MOUSEBUTTONUP:
+            """
             try:
                 selected_particle.circle_color = (0,0,255)
             except:
                 pass
+            """
             selected_particle = None
 
     if selected_particle:
-        selected_particle.circle_color = (255,0,0)
+        #selected_particle.circle_color = (255,0,0)
         (mouseX, mouseY) = pg.mouse.get_pos()
         dx = mouseX - selected_particle.x
         dy = mouseY - selected_particle.y
@@ -121,15 +148,16 @@ while running:
     screen.fill(background_color)
 
     circle_points = []
-    for particle in my_particles:
+    for i, particle in enumerate(my_particles):
         particle.move()
         particle.bounce()
+        for particle2 in my_particles[i+1:]:
+            collide(particle, particle2)
         particle.display()
         circle_points.append((particle.x, particle.y))
     pg.draw.lines(screen, line_color, True, circle_points)
-
     pg.display.flip()
-    pg.display.update()
+
     fpsClock.tick(FPS)
 
 pg.quit()
