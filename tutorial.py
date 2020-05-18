@@ -16,7 +16,7 @@ line_color       = (0, 255, 0)
 drag = 0.999                   # 空気抵抗
 elasticity = 0.75              # 反発係数
 #gravity = (pi, 0.002)          # 重力
-gravity = (pi, 0.01)
+gravity = (pi, 0.2)
 
 def addVectors(angle1, length1, angle2, length2):
     x  = sin(angle1) * length1 + sin(angle2) * length2
@@ -113,7 +113,7 @@ for n in range(particle_num):
     y = random.randint(size, height-size)
 
     particle = Particle(x, y, size, density*size**2)
-    particle.color = (200-density*10, 200-density*10, 255)
+    #particle.color = (200-density*10, 200-density*10, 255)
     particle.speed = random.random()
     particle.angle = random.uniform(0, pi*2)
 
@@ -129,16 +129,16 @@ while running:
             (mouseX, mouseY) = pg.mouse.get_pos()
             selected_particle = findParticle(my_particles, mouseX, mouseY)
         elif event.type == pg.MOUSEBUTTONUP:
-            """
+            #"""
             try:
                 selected_particle.circle_color = (0,0,255)
             except:
                 pass
-            """
+            #"""
             selected_particle = None
 
     if selected_particle:
-        #selected_particle.circle_color = (255,0,0)
+        selected_particle.circle_color = (255,0,0)
         (mouseX, mouseY) = pg.mouse.get_pos()
         dx = mouseX - selected_particle.x
         dy = mouseY - selected_particle.y
