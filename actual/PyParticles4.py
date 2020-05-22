@@ -109,8 +109,11 @@ class Spring:
         theta = math.atan2(dy, dx)
         force = (self.length - dist) * self.strength
 
-        self.p1.accelerate((theta + 0.5 * math.pi, force/self.p1.mass))
-        self.p2.accelerate((theta - 0.5 * math.pi, force/self.p2.mass))
+        p1_acc = ((theta + 0.5 * math.pi), (force/self.p1.mass))
+        p2_acc = ((theta - 0.5 * math.pi), (force/self.p2.mass))
+
+        self.p1.accelerate(p1_acc)
+        self.p2.accelerate(p2_acc)
 
 class Environment:
     """ Defines the boundary of a simulation and its properties """
