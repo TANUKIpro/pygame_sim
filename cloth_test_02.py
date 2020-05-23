@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# https://www.gpgstudy.com/gpgiki/GDC_2001:_Advanced_Character_Physics
 import pygame, sys, math
 
 pygame.init()
@@ -16,6 +17,20 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
+
+def rgb(value, minimum=30, maximum=45):
+    minimum, maximum = float(minimum), float(maximum)
+    ratio = 2 * (value-minimum) / (maximum - minimum)
+    b = int(max(0, 255*(1 - ratio)))
+    r = int(max(0, 255*(ratio - 1)))
+    g = 255 - b - r
+    if b > 255:b=255
+    if b < 0  :b=0
+    if r > 255:r=255
+    if r < 0  :r=0
+    if g > 255:g=255
+    if g < 0  :g=0
+    return r,g,b
 
 class Particle:
     def __init__(self, x, y, m = 1.0):
@@ -82,23 +97,24 @@ class Constraint:
         delta_y = particles[self.index1].y - particles[self.index0].y
         deltaLength = math.sqrt(delta_x**2 + delta_y**2)
         # 二点間の距離の平均変化率 + α
-        diff = (deltaLength - self.restLength)/(deltaLength+ 0.001)
+        diff = (deltaLength - self.restLength)/(deltaLength+0.001)
 
         # 2次のルンゲクッタ法
-        cons_vias = 1/2
         if particles[self.index0].fixed == False:
-            particles[self.index0].x += cons_vias * diff * delta_x
-            particles[self.index0].y += cons_vias * diff * delta_y
+            particles[self.index0].x += 0.5 * diff * delta_x
+            particles[self.index0].y += 0.5 * diff * delta_y
         if particles[self.index1].fixed == False:
-            particles[self.index1].x -= cons_vias * diff * delta_x
-            particles[self.index1].y -= cons_vias * diff * delta_y
+            particles[self.index1].x -= 0.5 * diff * delta_x
+            particles[self.index1].y -= 0.5 * diff * delta_y
 
     def draw(self, surf, size):
         x0 = particles[self.index0].x
         y0 = particles[self.index0].y
         x1 = particles[self.index1].x
         y1 = particles[self.index1].y
-        pygame.draw.line(surf, WHITE, (int(x0), int(y0)), (int(x1), int(y1)), size)
+
+        d = math.sqrt((x0-x1)**2+(y0-y1)**2)
+        pygame.draw.line(surf, rgb(d), (int(x0), int(y0)), (int(x1), int(y1)), size)
 
 def find_particle(pos):
     for i in range(len(particles)):
@@ -110,13 +126,14 @@ def find_particle(pos):
             break
 
 delta_t = 0.1      # Update の最小時間
-NUM_ITER = 5       # 結束強度
+NUM_ITER = 10       # 結束強度
 mouse = False
 mouse_pos = (0, 0)
 
 NUM_X = 10         # パーティクルX軸
 NUM_Y = 10         # パーティクルY軸
 particles = []
+
 for j in range(NUM_Y):
     for i in range(NUM_X):
         x = 100 + i * 20.0
@@ -135,6 +152,7 @@ for j in range(NUM_Y):
         if i < (NUM_X - 1):
             index0 = i + j * NUM_X
             index1 = (i + 1) + j * NUM_X
+            #print("idx0:{0}, idx1:{1}".format(index0, index1))
             c = Constraint(index0, index1)
             constraints.append(c)
         if j < (NUM_Y - 1):
@@ -158,7 +176,6 @@ for j in range(NUM_Y - 1):
 Running = True
 while Running:
     screen.fill(BLACK)
-
     # particles update
     for i in range(len(particles)):
         particles[i].update(delta_t)
