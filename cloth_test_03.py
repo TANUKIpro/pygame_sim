@@ -101,12 +101,13 @@ class Constraint:
         deltaLength = math.sqrt(delta_x**2 + delta_y**2)
         diff = (deltaLength - self.restLength)/(deltaLength+0.001)
 
+        le = 0.5
         if particles[self.index0].fixed == False:
-            particles[self.index0].x += 0.5 * diff * delta_x
-            particles[self.index0].y += 0.5 * diff * delta_y
+            particles[self.index0].x += le * diff * delta_x
+            particles[self.index0].y += le * diff * delta_y
         if particles[self.index1].fixed == False:
-            particles[self.index1].x -= 0.5 * diff * delta_x
-            particles[self.index1].y -= 0.5 * diff * delta_y
+            particles[self.index1].x -= le * diff * delta_x
+            particles[self.index1].y -= le * diff * delta_y
 
     def draw(self, surf, size):
         x0 = particles[self.index0].x
@@ -135,6 +136,7 @@ NUM_X = 10         # パーティクルX軸
 NUM_Y = 10         # パーティクルY軸
 particles = []
 
+# パーティクルの描画座標
 for j in range(NUM_Y):
     for i in range(NUM_X):
         x = 100 + i * 20.0
@@ -142,12 +144,14 @@ for j in range(NUM_Y):
         p = Particle(x, y)
         particles.append(p)
 
+# particle fix
 particles[0].fixed = True
 particles[NUM_X-1].fixed = True
 particles[(NUM_Y-1) * NUM_X].fixed = True
 particles[(NUM_Y) * NUM_X - 1].fixed = True
 
 constraints = []
+
 # 縦、横への拘束
 for j in range(NUM_Y):
     for i in range(NUM_X):
@@ -162,6 +166,7 @@ for j in range(NUM_Y):
             index1 = i + (j + 1) * NUM_X
             c = Constraint(index0, index1)
             constraints.append(c)
+
 # 斜めへの拘束
 for j in range(NUM_Y - 1):
     for i in range(NUM_X - 1):
