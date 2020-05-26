@@ -3,6 +3,7 @@
 
 # https://www.gpgstudy.com/gpgiki/GDC_2001:_Advanced_Character_Physics
 import pygame
+import dxfgrabber
 import sys
 import math
 
@@ -11,16 +12,17 @@ pygame.init()
 FPS = 60
 fpsClock = pygame.time.Clock()
 
-WIDTH = 400
+WIDTH = 600
 HEIGHT = 300
 screen = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
-pygame.display.set_caption('koike TEST 02')
+pygame.display.set_caption('EXTENSOR HOOD TEST 01')
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 
+# 負荷かかった時のヒートマップ表示
 def rgb(value, minimum=30, maximum=45):
     minimum, maximum = float(minimum), float(maximum)
     ratio = 2 * (value-minimum) / (maximum - minimum)
@@ -132,23 +134,51 @@ NUM_ITER = 10       # 結束強度
 mouse = False
 mouse_pos = (0, 0)
 
-NUM_X = 10         # パーティクルX軸
-NUM_Y = 10         # パーティクルY軸
-particles = []
+##    =================================================================    ##
+file_name="test_extensor_hood_v2.dxf"
+dxf = dxfgrabber.readfile(file_name)
 
-# パーティクルの描画座標
-for j in range(NUM_Y):
-    for i in range(NUM_X):
-        x = 100 + i * 20.0
-        y = 50 + j * 20.0
-        p = Particle(x, y)
-        particles.append(p)
+circles = [e for e in dxf.entities if e.dxftype == 'CIRCLE']
+lines   = [e for e in dxf.entities if e.dxftype == 'LINE']
+points  = [e for e in dxf.entities if e.dxftype == 'POINT']
+
+all_cood = []
+particles = []
+anchors = []
+for circle in circles:
+    x = circle.center[0]*10 +10
+    y = circle.center[1]*10 +50
+    x, y = int(round(x, 3)), int(round(y, 3))
+    all_cood.append([x, y])
+    if x == -7+10 or x == 96+10:
+        anchors.append([x, y])
+
+for line in lines:
+    ls_x, ls_y = -1*line.start[0]*10+10, line.start[2]*10+50
+    le_x, le_y = -1*line.end[0]  *10+10, line.end[2]  *10+50
+
+    ls_x, ls_y = round(ls_x, 3), round(ls_y, 3)
+    le_x, le_y = round(le_x, 3), round(le_y, 3)
+    all_cood.append([int(ls_x), int(ls_y)])
+    all_cood.append([int(le_x), int(le_y)])
+
+# 重複要素の消去
+def get_unique_list(seq):
+    seen = []
+    return [x for x in seq if x not in seen and not seen.append(x)]
+
+clear_cood = get_unique_list(all_cood)
+for cood in clear_cood:
+    p = Particle(cood[0], cood[1])
+    particles.append(p)
 
 # particle fix
-particles[0].fixed = True
-particles[NUM_X-1].fixed = True
-particles[(NUM_Y-1) * NUM_X].fixed = True
-particles[(NUM_Y) * NUM_X - 1].fixed = True
+for anchor in get_unique_list(anchors):
+    anc_idx = clear_cood.index(anchor)
+    particles[anc_idx].fixed = True
+
+sys.exit()
+##    =================================================================    ##
 
 constraints = []
 
@@ -167,18 +197,6 @@ for j in range(NUM_Y):
             c = Constraint(index0, index1)
             constraints.append(c)
 
-# 斜めへの拘束
-for j in range(NUM_Y - 1):
-    for i in range(NUM_X - 1):
-        index0 = i + j * NUM_X
-        index1 = (i + 1) + (j + 1) * NUM_X
-        c = Constraint(index0, index1)
-        constraints.append(c)
-    for i in range(1, NUM_X):
-        index0 = i + j * NUM_X
-        index1 = (i - 1) + (j + 1) * NUM_X
-        c = Constraint(index0, index1)
-        constraints.append(c)
 
 Running = True
 while Running:
