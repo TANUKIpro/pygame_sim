@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # https://www.gpgstudy.com/gpgiki/GDC_2001:_Advanced_Character_Physics
-import pygame, sys, math
+import pygame
+import sys
+import math
 
 pygame.init()
 
@@ -83,7 +85,7 @@ class Particle:
 
         pygame.draw.circle(surf, color, (int(self.x), int(self.y)), size)
 
-# パーティクルへの制約
+# パーティクルへの拘束条件
 class Constraint:
     def __init__(self, index0, index1):
         self.index0 = index0
@@ -96,10 +98,8 @@ class Constraint:
         delta_x = particles[self.index1].x - particles[self.index0].x
         delta_y = particles[self.index1].y - particles[self.index0].y
         deltaLength = math.sqrt(delta_x**2 + delta_y**2)
-        # 二点間の距離の平均変化率 + α
         diff = (deltaLength - self.restLength)/(deltaLength+0.001)
 
-        # 2次のルンゲクッタ法
         if particles[self.index0].fixed == False:
             particles[self.index0].x += 0.5 * diff * delta_x
             particles[self.index0].y += 0.5 * diff * delta_y
@@ -125,8 +125,8 @@ def find_particle(pos):
             particles[i].set_pos(pos)
             break
 
-delta_t = 0.1      # Update の最小時間
-NUM_ITER = 10       # 結束強度
+delta_t = 0.1
+NUM_ITER = 20       # 結束強度
 mouse = False
 mouse_pos = (0, 0)
 
