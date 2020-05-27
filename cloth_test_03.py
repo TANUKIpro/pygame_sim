@@ -3,17 +3,18 @@
 
 # https://www.gpgstudy.com/gpgiki/GDC_2001:_Advanced_Character_Physics
 import pygame
+import numpy as np
 import dxfgrabber
 import sys
 import math
+import time
 
 pygame.init()
-
 FPS = 60
 fpsClock = pygame.time.Clock()
 
-WIDTH = 600
-HEIGHT = 300
+WIDTH = 800
+HEIGHT = 400
 screen = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
 pygame.display.set_caption('EXTENSOR HOOD TEST 01')
 
@@ -129,12 +130,26 @@ def find_particle(pos):
             particles[i].set_pos(pos)
             break
 
+# 重複要素の消去
+def get_unique_list(seq):
+    seen = []
+    return [x for x in seq if x not in seen and not seen.append(x)]
+
+def get_index(data1, data2):
+    pass
+
 delta_t = 0.1
 NUM_ITER = 10       # 結束強度
 mouse = False
 mouse_pos = (0, 0)
 
-##    =================================================================    ##
+size_vias = 15      # vias of size
+x_vias    = 10
+y_vias    = 70
+fix_01 = int(-0.7*size_vias+x_vias)  # anchor point 01
+fix_02 = int(9.6*size_vias+x_vias)  # anchor point 01
+
+# dxf analysation
 file_name="test_extensor_hood_v2.dxf"
 dxf = dxfgrabber.readfile(file_name)
 
@@ -146,26 +161,24 @@ all_cood = []
 particles = []
 anchors = []
 for circle in circles:
-    x = circle.center[0]*10 +10
-    y = circle.center[1]*10 +50
+    x = circle.center[0]*size_vias +x_vias
+    y = circle.center[1]*size_vias +y_vias
     x, y = int(round(x, 3)), int(round(y, 3))
     all_cood.append([x, y])
-    if x == -7+10 or x == 96+10:
+    if x == fix_01 or x == fix_02:
         anchors.append([x, y])
 
+lines_cood = []
 for line in lines:
-    ls_x, ls_y = -1*line.start[0]*10+10, line.start[2]*10+50
-    le_x, le_y = -1*line.end[0]  *10+10, line.end[2]  *10+50
+    ls_x, ls_y = -1*line.start[0]*size_vias+x_vias, line.start[2]*size_vias+y_vias
+    le_x, le_y = -1*line.end[0]  *size_vias+x_vias, line.end[2]  *size_vias+y_vias
 
     ls_x, ls_y = round(ls_x, 3), round(ls_y, 3)
     le_x, le_y = round(le_x, 3), round(le_y, 3)
+
     all_cood.append([int(ls_x), int(ls_y)])
     all_cood.append([int(le_x), int(le_y)])
-
-# 重複要素の消去
-def get_unique_list(seq):
-    seen = []
-    return [x for x in seq if x not in seen and not seen.append(x)]
+    lines_cood.append([[int(ls_x), int(ls_y)], [int(le_x), int(le_y)]])
 
 clear_cood = get_unique_list(all_cood)
 for cood in clear_cood:
@@ -177,26 +190,16 @@ for anchor in get_unique_list(anchors):
     anc_idx = clear_cood.index(anchor)
     particles[anc_idx].fixed = True
 
-sys.exit()
-##    =================================================================    ##
-
 constraints = []
+l_coods = np.array(lines_cood)
+for l_se in l_coods:
+    index0 = clear_cood.index(l_se[0].tolist())
+    index1 = clear_cood.index(l_se[1].tolist())
+    c = Constraint(index0, index1)
+    constraints.append(c)
 
-# 縦、横への拘束
-for j in range(NUM_Y):
-    for i in range(NUM_X):
-        if i < (NUM_X - 1):
-            index0 = i + j * NUM_X
-            index1 = (i + 1) + j * NUM_X
-            #print("idx0:{0}, idx1:{1}".format(index0, index1))
-            c = Constraint(index0, index1)
-            constraints.append(c)
-        if j < (NUM_Y - 1):
-            index0 = i + j * NUM_X
-            index1 = i + (j + 1) * NUM_X
-            c = Constraint(index0, index1)
-            constraints.append(c)
-
+print(len(constraints))
+#sys.exit()
 
 Running = True
 while Running:
@@ -230,5 +233,6 @@ while Running:
 
     pygame.display.update()
     fpsClock.tick(FPS)
+
 
 pygame.quit()
