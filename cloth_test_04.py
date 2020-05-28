@@ -12,12 +12,12 @@ import time
 pygame.init()
 FPS = 60
 fpsClock = pygame.time.Clock()
-font = pygame.font.Font(None, 30)
+font = pygame.font.Font(None, 15)
 
 WIDTH  = 800
 HEIGHT = 800
 screen = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
-pygame.display.set_caption('EXTENSOR HOOD TEST 01')
+pygame.display.set_caption('EXTENSOR HOOD')
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -50,7 +50,7 @@ class Particle:
         self.newx = x
         self.newy = y
         self.ax = 0
-        self.ay = 9.8
+        self.ay = 9.8 #0
 
         self.fixed = False
         self.selected = False
@@ -253,6 +253,5 @@ while Running:
 
     pygame.display.update()
     fpsClock.tick(FPS)
-    #time.sleep(1)
 
 pygame.quit()
