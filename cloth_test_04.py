@@ -12,9 +12,10 @@ import time
 pygame.init()
 FPS = 60
 fpsClock = pygame.time.Clock()
+font = pygame.font.Font(None, 30)
 
-WIDTH = 800
-HEIGHT = 400
+WIDTH  = 800
+HEIGHT = 800
 screen = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
 pygame.display.set_caption('EXTENSOR HOOD TEST 01')
 
@@ -41,6 +42,7 @@ def rgb(value, minimum=30, maximum=45):
 class Particle:
     def __init__(self, x, y, m = 1.0):
         self.m = m
+        self.init_x, self.init_y = x, y
         self.x = x
         self.y = y
         self.oldx = x
@@ -82,8 +84,11 @@ class Particle:
     def draw(self, surf, size):
         if self.fixed == True:
             color = GREEN
+            moji = str(self.x)+", "+str(self.y)
+            txt = font.render(moji, True, (0, 0, 0))
+            screen.blit(txt, [self.x, self.y])
         else:
-            color = WHITE
+            color = BLACK
         if self.selected == True:
             color = RED
 
@@ -113,13 +118,21 @@ class Constraint:
             particles[self.index1].y -= le * diff * delta_y
 
     def draw(self, surf, size):
+        ## 初期位置からパーティクル間の距離を計算
+        f_x0 = particles[self.index0].init_x
+        f_y0 = particles[self.index0].init_y
+        f_x1 = particles[self.index1].init_x
+        f_y1 = particles[self.index1].init_y
+        init_d = math.sqrt((f_x0-f_x1)**2+(f_y0-f_y1)**2)
+
         x0 = particles[self.index0].x
         y0 = particles[self.index0].y
         x1 = particles[self.index1].x
         y1 = particles[self.index1].y
-
         d = math.sqrt((x0-x1)**2+(y0-y1)**2)
-        pygame.draw.line(surf, rgb(d), (int(x0), int(y0)), (int(x1), int(y1)), size)
+
+        pygame.draw.line(surf, rgb(d, minimum=init_d, maximum=init_d*1.25),
+                         (int(x0), int(y0)), (int(x1), int(y1)), size)
 
 def find_particle(pos):
     for i in range(len(particles)):
@@ -140,67 +153,77 @@ NUM_ITER = 10       # 結束強度
 mouse = False
 mouse_pos = (0, 0)
 
-size_vias = 15      # vias of size
-x_vias    = 10
-y_vias    = 70
-fix_01 = int(-0.7*size_vias+x_vias)  # anchor point 01
-fix_02 = int(9.6*size_vias+x_vias)  # anchor point 01
-
 # dxf analysation
-file_name="test_extensor_hood_v2.dxf"
+file_name="extensor_hood_test001.dxf"
 dxf = dxfgrabber.readfile(file_name)
 
-circles = [e for e in dxf.entities if e.dxftype == 'CIRCLE']
-lines   = [e for e in dxf.entities if e.dxftype == 'LINE']
-points  = [e for e in dxf.entities if e.dxftype == 'POINT']
+for i, layer in enumerate(dxf.layers):
+    print("Layer {0} : {1}".format(i, layer.name))
 
-all_cood = []
+all_stop_points_en      = [e for e in dxf.entities if e.layer == 'stop_points']     ##  only CIRCLE
+all_polly_lines_en      = [e for e in dxf.entities if e.layer == 'polly_lines']     ##  only LWPOLYLINE
+all_particle_points_en  = [e for e in dxf.entities if e.layer == 'particle_points'] ##  only CIRCLE
+
+size_vias = 1/15
+inversion = -1
+x_vias = 20#-100
+y_vias = 880
+
+## 固定パーティクルの座標が格納
+stop_points = []
+for circle in all_stop_points_en:
+    x = int(round(circle.center[0] * size_vias + x_vias, 1))
+    y = int(round(circle.center[1] * size_vias * inversion + y_vias, 1))
+    stop_points.append([x, y])
+
+## ポリラインの頂点座標が格納
+poly_lines = []
+for lw_polyline in all_polly_lines_en:
+    lump = []
+    for cood in lw_polyline.points:
+        x = int(round(cood[0] * size_vias + x_vias, 1))
+        y = int(round(cood[1] * size_vias * inversion + y_vias, 1))
+        lump.append([x, y])
+    poly_lines.append(lump)
+
+## パーティクルの座標が格納
+particle_points = []
+for circle in all_particle_points_en:
+    x = int(round(circle.center[0] * size_vias + x_vias, 1))
+    y = int(round(circle.center[1] * size_vias * inversion + y_vias, 1))
+    particle_points.append([x, y])
+
+## パーティクルの重複座標を消去
+print("Clearing duplicate particles : ", len(particle_points), "-->",
+                                         len(get_unique_list(particle_points)))
+particle_points = get_unique_list(particle_points)
+
 particles = []
-anchors = []
-for circle in circles:
-    x = circle.center[0]*size_vias +x_vias
-    y = circle.center[1]*size_vias +y_vias
-    x, y = int(round(x, 3)), int(round(y, 3))
-    all_cood.append([x, y])
-    if x == fix_01 or x == fix_02:
-        anchors.append([x, y])
-
-lines_cood = []
-for line in lines:
-    ls_x, ls_y = -1*line.start[0]*size_vias+x_vias, line.start[2]*size_vias+y_vias
-    le_x, le_y = -1*line.end[0]  *size_vias+x_vias, line.end[2]  *size_vias+y_vias
-
-    ls_x, ls_y = round(ls_x, 3), round(ls_y, 3)
-    le_x, le_y = round(le_x, 3), round(le_y, 3)
-
-    all_cood.append([int(ls_x), int(ls_y)])
-    all_cood.append([int(le_x), int(le_y)])
-    lines_cood.append([[int(ls_x), int(ls_y)], [int(le_x), int(le_y)]])
-
-clear_cood = get_unique_list(all_cood)
-for cood in clear_cood:
-    p = Particle(cood[0], cood[1])
+for p_point in particle_points:
+    p = Particle(int(p_point[0]), int(p_point[1]))
     particles.append(p)
 
-# particle fix
-for anchor in get_unique_list(anchors):
-    anc_idx = clear_cood.index(anchor)
-    particles[anc_idx].fixed = True
+for s_point in stop_points:
+    try:
+        anc_idx = particle_points.index(s_point)
+        particles[anc_idx].fixed = True
+    except:pass
 
 constraints = []
-l_coods = np.array(lines_cood)
-for l_se in l_coods:
-    index0 = clear_cood.index(l_se[0].tolist())
-    index1 = clear_cood.index(l_se[1].tolist())
-    c = Constraint(index0, index1)
-    constraints.append(c)
-
-print(len(constraints))
-#sys.exit()
+for lines in poly_lines:
+    top_count = len(lines)
+    for i in range(top_count-1):
+        try:
+            index0 = particle_points.index(lines[i])
+            index1 = particle_points.index(lines[i+1])
+            c = Constraint(index0, index1)
+            constraints.append(c)
+        except:
+            print(lines[i])
 
 Running = True
 while Running:
-    screen.fill(BLACK)
+    screen.fill(WHITE)
     # particles update
     for i in range(len(particles)):
         particles[i].update(delta_t)
@@ -230,6 +253,6 @@ while Running:
 
     pygame.display.update()
     fpsClock.tick(FPS)
-
+    #time.sleep(1)
 
 pygame.quit()
