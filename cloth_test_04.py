@@ -149,7 +149,7 @@ def get_unique_list(seq):
     return [x for x in seq if x not in seen and not seen.append(x)]
 
 delta_t = 0.1
-NUM_ITER = 10       # 結束強度
+NUM_ITER = 5       # 結束強度
 mouse = False
 mouse_pos = (0, 0)
 
@@ -164,10 +164,10 @@ all_stop_points_en      = [e for e in dxf.entities if e.layer == 'stop_points'] 
 all_polly_lines_en      = [e for e in dxf.entities if e.layer == 'polly_lines']     ##  only LWPOLYLINE
 all_particle_points_en  = [e for e in dxf.entities if e.layer == 'particle_points'] ##  only CIRCLE
 
-size_vias = 1/15
+size_vias = 1/18
 inversion = -1
-x_vias = 20#-100
-y_vias = 880
+x_vias = 70#-100
+y_vias = 740#880
 
 ## 固定パーティクルの座標が格納
 stop_points = []
