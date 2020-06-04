@@ -268,11 +268,13 @@ while Running:
            1. particles_update_time   : {0}s \n\
            2. constraints_update_time : {1}s \n\
            3. particles_draw_time     : {2}s \n\
-           4. constraints_draw_time   : {3}s \n"
+           4. constraints_draw_time   : {3}s \n\
+       TOTAL.                         : {4}s \n"
            .format(particles_update_time,
                    constraints_update_time,
                    particles_draw_time,
-                   constraints_draw_time))
+                   constraints_draw_time,
+                   particles_update_time+constraints_update_time+particles_draw_time+constraints_draw_time))
 
     pygame.display.update()
     fpsClock.tick(FPS)

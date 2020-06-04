@@ -8,8 +8,13 @@ import dxfgrabber
 import sys
 import math
 import time
-#import threading
+# multi thread
 from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
+# Cython
+from const_update import constraints_update_cython
+from const_update import constraints_draw_cython
+
 
 pygame.init()
 FPS = 60
@@ -25,21 +30,6 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
-
-# 負荷かかった時のヒートマップ表示
-def rgb(value, minimum=30, maximum=45):
-    minimum, maximum = float(minimum), float(maximum)
-    ratio = 2 * (value-minimum) / (maximum - minimum)
-    b = int(max(0, 255*(1 - ratio)))
-    r = int(max(0, 255*(ratio - 1)))
-    g = 255 - b - r
-    if b > 255:b=255
-    if b < 0  :b=0
-    if r > 255:r=255
-    if r < 0  :r=0
-    if g > 255:g=255
-    if g < 0  :g=0
-    return r,g,b
 
 class Particle:
     def __init__(self, x, y, m = 1.0):
@@ -103,38 +93,7 @@ class Constraint:
         self.index1 = index1
         delta_x = particles[index0].x - particles[index1].x
         delta_y = particles[index0].y - particles[index1].y
-        self.restLength = math.sqrt(delta_x**2 + delta_y**2)
-
-    def update(self):
-        delta_x = particles[self.index1].x - particles[self.index0].x
-        delta_y = particles[self.index1].y - particles[self.index0].y
-        deltaLength = math.sqrt(delta_x**2 + delta_y**2)
-        diff = (deltaLength - self.restLength)/(deltaLength+0.001)
-
-        le = 0.5
-        if particles[self.index0].fixed == False:
-            particles[self.index0].x += le * diff * delta_x
-            particles[self.index0].y += le * diff * delta_y
-        if particles[self.index1].fixed == False:
-            particles[self.index1].x -= le * diff * delta_x
-            particles[self.index1].y -= le * diff * delta_y
-
-    def draw(self, surf, size):
-        ## 初期位置からパーティクル間の距離を計算
-        f_x0 = particles[self.index0].init_x
-        f_y0 = particles[self.index0].init_y
-        f_x1 = particles[self.index1].init_x
-        f_y1 = particles[self.index1].init_y
-        init_d = math.sqrt((f_x0-f_x1)**2+(f_y0-f_y1)**2)
-
-        x0 = particles[self.index0].x
-        y0 = particles[self.index0].y
-        x1 = particles[self.index1].x
-        y1 = particles[self.index1].y
-        d = math.sqrt((x0-x1)**2+(y0-y1)**2)
-
-        pygame.draw.line(surf, rgb(d, minimum=init_d, maximum=init_d*1.25),
-                         (int(x0), int(y0)), (int(x1), int(y1)), size)
+        self.restLength = math.sqrt(delta_x*delta_x + delta_y*delta_y)
 
 def find_particle(pos):
     for i in range(len(particles)):
@@ -224,40 +183,30 @@ for lines in poly_lines:
         except:
             print(lines[i])
 
-# particles update
-def particles_update():
-    for i in range(len(particles)):
-        particles[i].update(delta_t)
-# constraints update
-def constraints_update():
-    for i in range(NUM_ITER):
-        for ii in range(len(constraints)):
-            constraints[ii].update()
-# particles draw
-def particles_draw():
-    for i in range(len(particles)):
-        particles[i].draw(screen, 3)
-# constraints draw
-def constraints_draw():
-    for i in range(len(constraints)):
-        constraints[i].draw(screen, 1)
-
-executor = ThreadPoolExecutor(max_workers=4)
-
 Running = True
 while Running:
     screen.fill(WHITE)
-    futures = [executor.submit(particles_update),
-               executor.submit(constraints_update),
-               executor.submit(particles_draw),
-               executor.submit(constraints_draw)]
+    # particles update
+    particles_update_time_s = time.time()
+    for i in range(len(particles)):
+        particles[i].update(delta_t)
+    particles_update_time = time.time() - particles_update_time_s
 
-    s = time.time()
-    for future in futures:
-        future.result()
-    g = time.time() - s
-    print("{:.15f}".format(g))
-    print("-------------------------------")
+    # constraints update
+    constraints_update_time_s = time.time()
+    constraints_update_cython(NUM_ITER, constraints, particles)
+    constraints_update_time = time.time() - constraints_update_time_s
+
+    # particles draw
+    particles_draw_time_s = time.time()
+    for i in range(len(particles)):
+        particles[i].draw(screen, 3)
+    particles_draw_time = time.time() - particles_draw_time_s
+
+    # constraints draw
+    constraints_draw_time_s = time.time()
+    constraints_draw_cython(constraints, particles, screen)
+    constraints_draw_time = time.time() - constraints_draw_time_s
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -269,7 +218,25 @@ while Running:
         if event.type == pygame.MOUSEMOTION and mouse == True:
             find_particle(pygame.mouse.get_pos())
 
+    ## particles_update_time  : 4th
+    ## constraints_update_time: 1st
+    ## particles_draw_time    : 3rd
+    ## constraints_draw_time  : 2nd
+    #"""
+    print("\
+           1. particles_update_time   : {0}s \n\
+           2. constraints_update_time : {1}s \n\
+           3. particles_draw_time     : {2}s \n\
+           4. constraints_draw_time   : {3}s \n\
+       TOTAL.                         : {4}s \n"
+           .format(particles_update_time,
+                   constraints_update_time,
+                   particles_draw_time,
+                   constraints_draw_time,
+                   particles_update_time+constraints_update_time+particles_draw_time+constraints_draw_time))
+    #"""
     pygame.display.update()
     fpsClock.tick(FPS)
+
 
 pygame.quit()
