@@ -8,6 +8,8 @@ import dxfgrabber
 import sys
 import math
 import time
+#import threading
+from concurrent.futures import ThreadPoolExecutor
 
 pygame.init()
 FPS = 60
@@ -222,33 +224,40 @@ for lines in poly_lines:
         except:
             print(lines[i])
 
-Running = True
-while Running:
-    screen.fill(WHITE)
-    # particles update
-    particles_update_time_s = time.time()
+# particles update
+def particles_update():
     for i in range(len(particles)):
         particles[i].update(delta_t)
-    particles_update_time = time.time() - particles_update_time_s
-
-    # constraints update
-    constraints_update_time_s = time.time()
+# constraints update
+def constraints_update():
     for i in range(NUM_ITER):
         for ii in range(len(constraints)):
             constraints[ii].update()
-    constraints_update_time = time.time() - constraints_update_time_s
-
-    # particles draw
-    particles_draw_time_s = time.time()
+# particles draw
+def particles_draw():
     for i in range(len(particles)):
         particles[i].draw(screen, 3)
-    particles_draw_time = time.time() - particles_draw_time_s
-
-    # constraints draw
-    constraints_draw_time_s = time.time()
+# constraints draw
+def constraints_draw():
     for i in range(len(constraints)):
         constraints[i].draw(screen, 1)
-    constraints_draw_time = time.time() - constraints_draw_time_s
+
+executor = ThreadPoolExecutor(max_workers=4)
+
+Running = True
+while Running:
+    screen.fill(WHITE)
+    futures = [executor.submit(particles_update),
+               executor.submit(constraints_update),
+               executor.submit(particles_draw),
+               executor.submit(constraints_draw)]
+
+    s = time.time()
+    for future in futures:
+        future.result()
+    g = time.time() - s
+    print("{:.15f}".format(g))
+    print("-------------------------------")
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -259,20 +268,6 @@ while Running:
             mouse = False
         if event.type == pygame.MOUSEMOTION and mouse == True:
             find_particle(pygame.mouse.get_pos())
-
-    ## particles_update_time  : 4th
-    ## constraints_update_time: 1st
-    ## particles_draw_time    : 3rd
-    ## constraints_draw_time  : 2nd
-    print("\
-           1. particles_update_time   : {0}s \n\
-           2. constraints_update_time : {1}s \n\
-           3. particles_draw_time     : {2}s \n\
-           4. constraints_draw_time   : {3}s \n"
-           .format(particles_update_time,
-                   constraints_update_time,
-                   particles_draw_time,
-                   constraints_draw_time))
 
     pygame.display.update()
     fpsClock.tick(FPS)
