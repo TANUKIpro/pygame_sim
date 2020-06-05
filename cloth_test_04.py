@@ -281,7 +281,7 @@ while Running:
     delay = past_time/delta_t
 
     color = GREEN
-    moji = "FPS:"+str(round(FPS*delay, 2))
+    moji = "FPS:"+str(round(FPS*(1-delay), 2))
     txt = font.render(moji, True, (0, 0, 0))
     screen.blit(txt, [0, 0])
 
