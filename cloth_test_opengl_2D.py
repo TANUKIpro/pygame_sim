@@ -2,23 +2,33 @@
 # -*- coding: utf-8 -*-
 
 # https://www.gpgstudy.com/gpgiki/GDC_2001:_Advanced_Character_Physics
-import pygame
 import numpy as np
-import dxfgrabber
-import sys
 import math
 import time
 
-pygame.init()
-FPS = 60
-fpsClock = pygame.time.Clock()
-font = pygame.font.Font(None, 15)
-font_FPS = pygame.font.Font(None, 30)
+from OpenGL.GL import *
+from OpenGL.GLU import *
+import pygame
+from pygame.locals import *
+import sys, os, traceback
+if sys.platform == 'win32' or sys.platform == 'win64':
+    os.environ['SDL_VIDEO_CENTERED'] = '1'
+from math import *
+pygame.display.init()
+pygame.font.init()
 
-WIDTH  = 800
-HEIGHT = 800
-screen = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
-pygame.display.set_caption('EXTENSOR HOOD')
+screen_size = [800,600]
+multisample = 16
+icon = pygame.Surface((1,1)); icon.set_alpha(0); pygame.display.set_icon(icon)
+pygame.display.set_caption("Cloth Demo 2")
+if multisample:
+    pygame.display.gl_set_attribute(GL_MULTISAMPLEBUFFERS,1)
+    pygame.display.gl_set_attribute(GL_MULTISAMPLESAMPLES,multisample)
+pygame.display.set_mode(screen_size,OPENGL|DOUBLEBUF)
+
+glHint(GL_PERSPECTIVE_CORRECTION_HINT,GL_NICEST)
+glEnable(GL_DEPTH_TEST)
+glPointSize(4)
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -92,8 +102,8 @@ class Particle:
             color = BLACK
         if self.selected == True:
             color = RED
-
         pygame.draw.circle(surf, color, (int(self.x), int(self.y)), size)
+
 
 # パーティクルへの拘束条件
 class Constraint:
@@ -229,8 +239,10 @@ while Running:
     screen.fill(WHITE)
     # particles update
     particles_update_time_s = time.time()
+    glBegin(GL_POINTS)
     for i in range(len(particles)):
         particles[i].update(delta_t)
+    glEnd()
     particles_update_time = time.time() - particles_update_time_s
 
     # constraints update
@@ -262,10 +274,6 @@ while Running:
         if event.type == pygame.MOUSEMOTION and mouse == True:
             find_particle(pygame.mouse.get_pos())
 
-    ## particles_update_time  : 4th
-    ## constraints_update_time: 1st
-    ## particles_draw_time    : 3rd
-    ## constraints_draw_time  : 2nd
     print("\
            1. particles_update_time   : {0}s \n\
            2. constraints_update_time : {1}s \n\

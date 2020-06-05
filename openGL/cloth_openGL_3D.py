@@ -90,8 +90,8 @@ class ClothCPU(object):
         corners = [[-1,-1], [ 1,-1],
                    [-1, 1], [ 1, 1]]
 
-        edges   = [[ 0,-1],　[-1, 0],
-                  　[ 1, 0],　[ 0, 1]]
+        edges   = [[ 0,-1], [-1, 0],
+                   [ 1, 0], [ 0, 1]]
         self.rels = edges + corners
         for rel in self.rels:
             length = sum([rel[i]*rel[i] for i in [0,1]])**0.5
@@ -103,11 +103,9 @@ class ClothCPU(object):
         for z in range(self.res):
             row = []
             for x in range(self.res):
-                row.append(Particle([
-                    float(x)/float(self.res-1),
-                    1.0,
-                    float(z)/float(self.res-1)
-                ]))
+                row.append(Particle([float(x)/float(self.res-1), 1.0,
+                                     float(z)/float(self.res-1)]))
+                                     
             self.particles.append(row)
         self.particles[         0][         0].constrained = True
         self.particles[self.res-1][         0].constrained = True
@@ -191,7 +189,7 @@ def get_input():
         camera_rot[1] += mouse_rel[1]
     return True
 def update(dt):
-    cloth.constrain(3)
+    cloth.constrain(5)
     cloth.update(dt)
 def draw():
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
@@ -204,13 +202,10 @@ def draw():
     glLoadIdentity()
 
     camera_pos = [camera_center[0] + camera_radius*cos(radians(camera_rot[0]))*cos(radians(camera_rot[1])),
-                  camera_center[1] + camera_radius                            *sin(radians(camera_rot[1])),
+                  camera_center[1] + camera_radius*sin(radians(camera_rot[1])),
                   camera_center[2] + camera_radius*sin(radians(camera_rot[0]))*cos(radians(camera_rot[1]))]
-    gluLookAt(
-        camera_pos[0],camera_pos[1],camera_pos[2],
-        camera_center[0],camera_center[1],camera_center[2],
-        0,1,0
-    )
+    gluLookAt(camera_pos[0],camera_pos[1],camera_pos[2],
+              camera_center[0],camera_center[1],camera_center[2],0,1,0)
 
     cloth.draw()
 

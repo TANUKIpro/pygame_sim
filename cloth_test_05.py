@@ -20,6 +20,7 @@ pygame.init()
 FPS = 60
 fpsClock = pygame.time.Clock()
 font = pygame.font.Font(None, 15)
+font_FPS = pygame.font.Font(None, 30)
 
 WIDTH  = 800
 HEIGHT = 800
@@ -109,7 +110,8 @@ def get_unique_list(seq):
     seen = []
     return [x for x in seq if x not in seen and not seen.append(x)]
 
-delta_t = 1/FPS
+#delta_t = 1/FPS
+delta_t = 0.1
 NUM_ITER = 5       # 結束強度
 mouse = False
 mouse_pos = (0, 0)
@@ -241,7 +243,7 @@ while Running:
 
     color = GREEN
     moji = "FPS:"+str(round(FPS*(1-delay), 2))
-    txt = font.render(moji, True, (0, 0, 0))
+    txt = font_FPS.render(moji, True, (0, 0, 0))
     screen.blit(txt, [0, 0])
 
     pygame.display.update()
