@@ -90,9 +90,8 @@ class ClothCPU(object):
         corners = [[-1,-1], [ 1,-1],
                    [-1, 1], [ 1, 1]]
 
-        edges = [        [ 0,-1],
-                 [-1, 0],        [ 1, 0],
-                         [ 0, 1]         ]
+        edges   = [[ 0,-1],　[-1, 0],
+                  　[ 1, 0],　[ 0, 1]]
         self.rels = edges + corners
         for rel in self.rels:
             length = sum([rel[i]*rel[i] for i in [0,1]])**0.5
@@ -204,11 +203,9 @@ def draw():
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
 
-    camera_pos = [
-        camera_center[0] + camera_radius*cos(radians(camera_rot[0]))*cos(radians(camera_rot[1])),
-        camera_center[1] + camera_radius                            *sin(radians(camera_rot[1])),
-        camera_center[2] + camera_radius*sin(radians(camera_rot[0]))*cos(radians(camera_rot[1]))
-    ]
+    camera_pos = [camera_center[0] + camera_radius*cos(radians(camera_rot[0]))*cos(radians(camera_rot[1])),
+                  camera_center[1] + camera_radius                            *sin(radians(camera_rot[1])),
+                  camera_center[2] + camera_radius*sin(radians(camera_rot[0]))*cos(radians(camera_rot[1]))]
     gluLookAt(
         camera_pos[0],camera_pos[1],camera_pos[2],
         camera_center[0],camera_center[1],camera_center[2],

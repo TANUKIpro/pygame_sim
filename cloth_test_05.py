@@ -109,7 +109,7 @@ def get_unique_list(seq):
     seen = []
     return [x for x in seq if x not in seen and not seen.append(x)]
 
-delta_t = 0.1
+delta_t = 1/FPS
 NUM_ITER = 5       # 結束強度
 mouse = False
 mouse_pos = (0, 0)
@@ -185,6 +185,7 @@ for lines in poly_lines:
 
 Running = True
 while Running:
+    start_time = time.time()
     screen.fill(WHITE)
     # particles update
     particles_update_time_s = time.time()
@@ -235,6 +236,14 @@ while Running:
                    constraints_draw_time,
                    particles_update_time+constraints_update_time+particles_draw_time+constraints_draw_time))
     #"""
+    past_time = time.time() - start_time
+    delay = past_time/delta_t
+
+    color = GREEN
+    moji = "FPS:"+str(round(FPS*delay, 2))
+    txt = font.render(moji, True, (0, 0, 0))
+    screen.blit(txt, [0, 0])
+
     pygame.display.update()
     fpsClock.tick(FPS)
 
