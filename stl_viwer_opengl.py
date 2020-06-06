@@ -1,6 +1,7 @@
 from stl import mesh
 from OpenGL.GL import *
 from OpenGL.GLU import *
+from OpenGL.GLUT import *
 import pygame
 from pygame.locals import *
 import sys, os, traceback
@@ -47,18 +48,32 @@ for _mesh in meshes:
 camera_rot = [70,23]
 camera_radius = 2.5
 camera_center = [0.5,0.5,0.5]
+angle_x = 0.
+angle_y = 0.
+angle_z = 0.
 def get_input():
-    global camera_rot, camera_radius
+    global camera_rot, camera_radius, angle_x, angle_y, angle_z
     keys_pressed = pygame.key.get_pressed()
     mouse_buttons = pygame.mouse.get_pressed()
     mouse_rel = pygame.mouse.get_rel()
+    key = pygame.key.get_pressed()
+    if key[K_LSHIFT]&key[K_UP]:  angle_x+=3
+    if key[K_LSHIFT]&key[K_DOWN]:angle_x-=3
+    if key[K_LEFT]:              angle_y+=3
+    if key[K_RIGHT]:             angle_y-=3
+    if key[K_UP]:                angle_z+=3
+    if key[K_DOWN]:              angle_z-=3
+
     for event in pygame.event.get():
-        if   event.type == QUIT: return False
+        if   event.type == QUIT:
+            return False
         elif event.type == KEYDOWN:
-            if   event.key == K_ESCAPE: return False
+            if event.key == K_ESCAPE:
+                return False
         elif event.type == MOUSEBUTTONDOWN:
             if   event.button == 4: camera_radius -= 0.5
             elif event.button == 5: camera_radius += 0.5
+
     if mouse_buttons[0]:
         camera_rot[0] += mouse_rel[0]
         camera_rot[1] += mouse_rel[1]
@@ -72,6 +87,7 @@ def edge_draw(points):
     glEnd()
 
 def polygon_draw(points):
+    glLineWidth(1.0)
     glPolygonMode(GL_FRONT, GL_LINE)
     glPolygonMode(GL_BACK, GL_LINE)
     glColor3f(1,1,1)
@@ -80,6 +96,39 @@ def polygon_draw(points):
         glVertex3fv(point)
     glEnd()
 
+def axis_draw():
+    #""
+    l = tuple((0,0,0))
+    glColor3f(1, 1, 0)
+    glPointSize(15)
+    glBegin(GL_POINTS)
+    glVertex3fv(l)
+    glEnd()
+
+    ## X
+    x = [tuple((0, 0, 0)), tuple((20, 0, 0))]
+    glColor3f(1.0, 0.0, 0.0)
+    glLineWidth(3.0)
+    glBegin(GL_LINES)
+    glVertex3fv(x[0])
+    glVertex3fv(x[1])
+    glEnd()
+
+    ## Y
+    y = [tuple((0, 0, 0)), tuple((0, 20, 0))]
+    glColor3f(0.0, 1.0, 0.0)
+    glBegin(GL_LINES)
+    glVertex3fv(y[0])
+    glVertex3fv(y[1])
+    glEnd()
+
+    ## Z
+    z = [tuple((0, 0, 0)), tuple((0, 0, 20))]
+    glColor3f(0.0, 0.0, 1.0)
+    glBegin(GL_LINES)
+    glVertex3fv(z[0])
+    glVertex3fv(z[1])
+    glEnd()
 
 def draw():
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
@@ -97,25 +146,17 @@ def draw():
     ####  gluLookAt(カメラ座標(x,y,z), カメラ向き(x,y,z), カメラの上方向を表すベクトル(,,))
     gluLookAt(camera_pos[0],camera_pos[1],camera_pos[2],
               camera_center[0],camera_center[1],camera_center[2],0,1,0)
-    """
-    glColor3f(0,1,1)
-    glBegin(GL_TRIANGLES)
-    for mesh in meshes:
-        glVertex3fv(mesh[0])  # X
-        glVertex3fv(mesh[1])  # Y
-        glVertex3fv(mesh[2])  # Z
-    glEnd()
-    """
-    #glEnable(GL_CULL_FACE)
-    #glCullFace(GL_BACK)
+    glRotated(angle_x, 1.0, 0.0, 0.0)
+    glRotated(angle_y, 0.0, 1.0, 0.0)
+    glRotated(angle_z, 0.0, 0.0, 1.0)
 
     for mesh in meshes:
         polygon_draw(mesh)
+    axis_draw()
 
-    """
-    for mesh in meshes:
-        edge_draw(mesh)
-    """
+    glFlush()
+    glutSwapBuffers()
+
     pygame.display.flip()
 
 def main():
@@ -131,8 +172,6 @@ if __name__=="__main__":
     try:
         main()
     except:
-        print("Error")
-    finally:
         traceback.print_exc()
         pygame.quit()
         sys.exit()
