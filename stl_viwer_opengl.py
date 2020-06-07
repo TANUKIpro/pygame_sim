@@ -5,6 +5,7 @@ from OpenGL.GLUT import *
 import pygame
 from pygame.locals import *
 import sys, os, traceback
+import ctypes
 from math import *
 pygame.display.init()
 pygame.font.init()
@@ -16,7 +17,7 @@ pygame.display.set_caption("STL VIEW")
 if multisample:
     pygame.display.gl_set_attribute(GL_MULTISAMPLEBUFFERS,1)
     pygame.display.gl_set_attribute(GL_MULTISAMPLESAMPLES,multisample)
-pygame.display.set_mode(screen_size,OPENGL|DOUBLEBUF)
+screen = pygame.display.set_mode(screen_size,OPENGL|DOUBLEBUF)
 
 glHint(GL_PERSPECTIVE_CORRECTION_HINT,GL_NICEST)
 glEnable(GL_DEPTH_TEST)
@@ -96,17 +97,18 @@ def polygon_draw(points):
         glVertex3fv(point)
     glEnd()
 
+org = tuple((0,0,0))
+x = [tuple((0, 0, 0)), tuple((10, 0, 0))]
+y = [tuple((0, 0, 0)), tuple((0, 10, 0))]
+z = [tuple((0, 0, 0)), tuple((0, 0, 10))]
 def axis_draw():
-    #""
-    l = tuple((0,0,0))
     glColor3f(1, 1, 0)
     glPointSize(15)
     glBegin(GL_POINTS)
-    glVertex3fv(l)
+    glVertex3fv(org)
     glEnd()
 
     ## X
-    x = [tuple((0, 0, 0)), tuple((20, 0, 0))]
     glColor3f(1.0, 0.0, 0.0)
     glLineWidth(3.0)
     glBegin(GL_LINES)
@@ -115,7 +117,6 @@ def axis_draw():
     glEnd()
 
     ## Y
-    y = [tuple((0, 0, 0)), tuple((0, 20, 0))]
     glColor3f(0.0, 1.0, 0.0)
     glBegin(GL_LINES)
     glVertex3fv(y[0])
@@ -123,35 +124,79 @@ def axis_draw():
     glEnd()
 
     ## Z
-    z = [tuple((0, 0, 0)), tuple((0, 0, 20))]
     glColor3f(0.0, 0.0, 1.0)
     glBegin(GL_LINES)
     glVertex3fv(z[0])
     glVertex3fv(z[1])
     glEnd()
 
+def drawText(value, x, y, windowHeight, windowWidth, step = 5):
+    """Draw the given text at given 2D position in window
+       文字列をビットマップフォントで描画
+    """
+    glMatrixMode(GL_PROJECTION);
+    matrix = glGetDouble( GL_PROJECTION_MATRIX )
+
+    glLoadIdentity();
+    glOrtho(0.0, windowHeight, 0.0, windowWidth, -1.0, 1.0)
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    glColor3f(1.0, 1.0, 1.0);
+    glRasterPos2i(x, y);
+    lines = 0
+    for character in value:
+        if character == '\n':
+            glRasterPos2i(x, y-(lines*18))
+        else:
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ord(character));
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glLoadMatrixd(matrix)
+    glMatrixMode(GL_MODELVIEW);
+
+def drawText_3D(value, x, y, z):
+    glColor3f(1.0, 1.0, 1.0);
+    cood = tuple((x, y, z))
+    glRasterPos3f(x, y, z);
+    lines = 0
+    for character in value:
+        if character == '\n':
+            glRasterPos2i(x, y-(lines*18))
+        else:
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ord(character));
+
 def draw():
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
-
     glViewport(0,0,screen_size[0],screen_size[1])
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     gluPerspective(90,float(screen_size[0])/float(screen_size[1]), 0.1, 100.0)
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
+
     camera_pos = [camera_center[0] + camera_radius*cos(radians(camera_rot[0]))*cos(radians(camera_rot[1])),
                   camera_center[1] + camera_radius*sin(radians(camera_rot[1])),
                   camera_center[2] + camera_radius*sin(radians(camera_rot[0]))*cos(radians(camera_rot[1]))]
 
     ####  gluLookAt(カメラ座標(x,y,z), カメラ向き(x,y,z), カメラの上方向を表すベクトル(,,))
+    ## オービット(原点を支点にカメラを移動)
     gluLookAt(camera_pos[0],camera_pos[1],camera_pos[2],
               camera_center[0],camera_center[1],camera_center[2],0,1,0)
     glRotated(angle_x, 1.0, 0.0, 0.0)
     glRotated(angle_y, 0.0, 1.0, 0.0)
     glRotated(angle_z, 0.0, 0.0, 1.0)
 
-    for mesh in meshes:
-        polygon_draw(mesh)
+    drawText("TEST", 5, 580, *screen_size)
+
+    drawText_3D("X", 10., 0., 0.)
+    drawText_3D("Y", 0., 10., 0.)
+    drawText_3D("Z", 0., 0., 10.)
+
+    #for mesh in meshes:
+    #    polygon_draw(mesh)
+
     axis_draw()
 
     glFlush()
