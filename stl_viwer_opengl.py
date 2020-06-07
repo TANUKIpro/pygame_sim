@@ -4,7 +4,7 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 import pygame
 from pygame.locals import *
-import sys, os, traceback
+import sys, os, traceback, time
 import ctypes
 from math import *
 pygame.display.init()
@@ -49,11 +49,11 @@ for _mesh in meshes:
 camera_rot = [70,23]
 camera_radius = 2.5
 camera_center = [0.5,0.5,0.5]
-angle_x = 0.
-angle_y = 0.
-angle_z = 0.
+angle_x,angle_y, angle_z = 0., 0., 0.
+vias_x, vias_y, vias_z = 0., 0., 0.
+
 def get_input():
-    global camera_rot, camera_radius, angle_x, angle_y, angle_z
+    global camera_rot, camera_radius, angle_x, angle_y, angle_z, vias_x, vias_y, vias_z
     keys_pressed = pygame.key.get_pressed()
     mouse_buttons = pygame.mouse.get_pressed()
     mouse_rel = pygame.mouse.get_rel()
@@ -64,6 +64,13 @@ def get_input():
     if key[K_RIGHT]:             angle_y-=3
     if key[K_UP]:                angle_z+=3
     if key[K_DOWN]:              angle_z-=3
+
+    if key[K_x]:              vias_x += 0.5
+    if key[K_LSHIFT]&key[K_x]:vias_x -= 0.5
+    if key[K_y]:              vias_y += 0.5
+    if key[K_LSHIFT]&key[K_y]:vias_y -= 0.5
+    if key[K_z]:              vias_z += 0.5
+    if key[K_LSHIFT]&key[K_z]:vias_z -= 0.5
 
     for event in pygame.event.get():
         if   event.type == QUIT:
@@ -98,9 +105,9 @@ def polygon_draw(points):
     glEnd()
 
 org = tuple((0,0,0))
-x = [tuple((0, 0, 0)), tuple((10, 0, 0))]
-y = [tuple((0, 0, 0)), tuple((0, 10, 0))]
-z = [tuple((0, 0, 0)), tuple((0, 0, 10))]
+x = [tuple((0, 0, 0)), tuple((5, 0, 0))]
+y = [tuple((0, 0, 0)), tuple((0, 5, 0))]
+z = [tuple((0, 0, 0)), tuple((0, 0, 5))]
 def axis_draw():
     glColor3f(1, 1, 0)
     glPointSize(15)
@@ -131,9 +138,7 @@ def axis_draw():
     glEnd()
 
 def drawText(value, x, y, windowHeight, windowWidth, step = 5):
-    """Draw the given text at given 2D position in window
-       文字列をビットマップフォントで描画
-    """
+    ## 文字列をビットマップフォントで描画
     glMatrixMode(GL_PROJECTION);
     matrix = glGetDouble( GL_PROJECTION_MATRIX )
 
@@ -172,7 +177,7 @@ def draw():
     glViewport(0,0,screen_size[0],screen_size[1])
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    gluPerspective(90,float(screen_size[0])/float(screen_size[1]), 0.1, 100.0)
+    gluPerspective(60,float(screen_size[0])/float(screen_size[1]), 0.1, 100.0)
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
 
@@ -180,22 +185,24 @@ def draw():
                   camera_center[1] + camera_radius*sin(radians(camera_rot[1])),
                   camera_center[2] + camera_radius*sin(radians(camera_rot[0]))*cos(radians(camera_rot[1]))]
 
-    ####  gluLookAt(カメラ座標(x,y,z), カメラ向き(x,y,z), カメラの上方向を表すベクトル(,,))
-    ## オービット(原点を支点にカメラを移動)
-    gluLookAt(camera_pos[0],camera_pos[1],camera_pos[2],
-              camera_center[0],camera_center[1],camera_center[2],0,1,0)
+    ####  gluLookAt(視点の位置(x,y,z), 目標の位置(x,y,z), 法線ベクトル(,,))
+    gluLookAt(camera_pos[0]+vias_x, camera_pos[1]+vias_y, camera_pos[2]+vias_z,
+              camera_center[0], camera_center[1], camera_center[2],
+              0,1,0)
+    print(vias_x, vias_y, vias_z)
+
     glRotated(angle_x, 1.0, 0.0, 0.0)
     glRotated(angle_y, 0.0, 1.0, 0.0)
     glRotated(angle_z, 0.0, 0.0, 1.0)
 
     drawText("TEST", 5, 580, *screen_size)
 
-    drawText_3D("X", 10., 0., 0.)
-    drawText_3D("Y", 0., 10., 0.)
-    drawText_3D("Z", 0., 0., 10.)
+    drawText_3D("X", 5., 0., 0.)
+    drawText_3D("Y", 0., 5., 0.)
+    drawText_3D("Z", 0., 0., 5.)
 
-    #for mesh in meshes:
-    #    polygon_draw(mesh)
+    for mesh in meshes:
+        polygon_draw(mesh)
 
     axis_draw()
 
@@ -207,6 +214,7 @@ def draw():
 def main():
     target_fps = 60
     clock = pygame.time.Clock()
+
     while True:
         if not get_input(): break
         draw()
