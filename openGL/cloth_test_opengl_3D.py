@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys, os, traceback, time
+from functools import lru_cache
 from math import sin, cos, sqrt, radians
 
 import pygame
@@ -29,27 +30,29 @@ glEnable(GL_DEPTH_TEST)
 glPointSize(4)
 
 class STL_loader:
-    def __init__(self):
+    def __init__(self, file_name, size):
+        self.file_name = file_name
+        self.size = size
         self.triangle_mesh = []
         self.quad_mesh     = []
         self.all_mesh_particle = []
 
-    def load(self, file_name, size):
+    def load(self):
         # STLファイルの読み込み
-        __mesh = mesh.Mesh.from_file(file_name)
-        meshes = (__mesh.vectors) * size
+        __mesh = mesh.Mesh.from_file(self.file_name)
+        meshes = (__mesh.vectors) * self.size
 
-        for _mesh in meshes:
-            if len(_mesh) == 3:
-                self.triangle_mesh.append(_mesh)
-            elif len(_mesh) == 4:
-                self.quad_mesh.append(_mesh)
+        for m in meshes:
+            if len(m) == 3:
+                self.triangle_mesh.append(m)
+            elif len(m) == 4:
+                self.quad_mesh.append(m)
             else:
                 print("ERROR")
                 sys.exit()
 
-        for _mesh in meshes:
-            for particle in _mesh:
+        for _m in meshes:
+            for particle in _m:
                 self.all_mesh_particle.append(particle)
 
         return self.triangle_mesh, self.quad_mesh, self.all_mesh_particle
@@ -111,14 +114,15 @@ class OpenGL_sim:
             self.camera_rot[1] += mouse_rel[1]
         return True
 
-    def draw_edge(self, points):
+    def drawEdge(self, points):
         glColor3f(0,0,0)
         glBegin(GL_LINE_STRIP)
         for point in points:
             glVertex3fv(point)
         glEnd()
 
-    def draw_polygon(self, points):
+    #@lru_cache()
+    def drawPolygon(self, points):
         glLineWidth(1.0)
         glPolygonMode(GL_FRONT, GL_LINE)
         glPolygonMode(GL_BACK, GL_LINE)
@@ -128,7 +132,8 @@ class OpenGL_sim:
             glVertex3fv(point)
         glEnd()
 
-    def axis_draw(self):
+    #@lru_cache()
+    def drawAxis(self):
         ## X
         glColor3f(1.0, 0.0, 0.0)
         glLineWidth(3.0)
@@ -221,21 +226,31 @@ class OpenGL_sim:
             self.drawText_3D("X", 5., 0., 0.)
             self.drawText_3D("Y", 0., 5., 0.)
             self.drawText_3D("Z", 0., 0., 5.)
-            self.axis_draw()
+            self.drawAxis()
 
-stl_loader = STL_loader()
 gl_set = OpenGL_sim()
-
-file_name = "model/only_index.stl"
+file_name = ["../model/Index/Metacarpal3_01.stl",
+             "../model/Index/Proximal_Phalanx3_01.stl",
+             "../model/Index/Middle_Phalanxh3_01.stl",
+             "../model/Index/Distal_Phalanxh3_01.stl"]
 size = 1/15
-stl_loader = STL_loader()
-bone_meshes, _, _ = stl_loader.load(file_name, size)
+Metacarpal3, _, _       = STL_loader(file_name[0], size).load()
+Proximal_Phalanx3, _, _ = STL_loader(file_name[1], size).load()
+Middle_Phalanxh3,  _, _ = STL_loader(file_name[2], size).load()
+Distal_Phalanxh3,  _, _ = STL_loader(file_name[3], size).load()
 
 def draw():
     gl_set.set_AxisViw_and_CameraAngle(org_point=True, axis=True)
     gl_set.drawText("TEST", 5, 580)
-    for mesh in bone_meshes:
-        gl_set.draw_polygon(mesh)
+
+    for idx_Meta in Metacarpal3:
+        gl_set.drawPolygon(idx_Meta)
+    for idx_PrxPh in Proximal_Phalanx3:
+        gl_set.drawPolygon(idx_PrxPh)
+    for idx_MddPh in Middle_Phalanxh3:
+        gl_set.drawPolygon(idx_MddPh)
+    for idx_DisPh in Distal_Phalanxh3:
+        gl_set.drawPolygon(idx_DisPh)
 
     glFlush()
     glutSwapBuffers()
