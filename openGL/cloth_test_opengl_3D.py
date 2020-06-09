@@ -10,8 +10,15 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 from stl import mesh
 import ctypes
-
-
+"""
+try:
+    sys.path.append("/Users/ryotaro/py_projects/pygame_sim/pgu")
+    from pgu import gui
+except:
+    print("No module named pgu.\n\
+           Clone this [https://github.com/parogers/pgu.git] or pass wo tose")
+    sys.exit()
+"""
 screen_size = [800,600]
 multisample = 16
 window_title = "STL VIEW"
@@ -229,10 +236,11 @@ class OpenGL_sim:
             self.drawAxis()
 
 gl_set = OpenGL_sim()
-file_name = ["../model/Index/Metacarpal3_01.stl",
-             "../model/Index/Proximal_Phalanx3_01.stl",
-             "../model/Index/Middle_Phalanxh3_01.stl",
-             "../model/Index/Distal_Phalanxh3_01.stl"]
+full_path = "/Users/ryotaro/py_projects/pygame_sim/model"
+file_name = [full_path+"/Index/Metacarpal3_01.stl",
+             full_path+"/Index/Proximal_Phalanx3_01.stl",
+             full_path+"/Index/Middle_Phalanxh3_01.stl",
+             full_path+"/Index/Distal_Phalanxh3_01.stl"]
 size = 1/15
 Metacarpal3, _, _       = STL_loader(file_name[0], size).load()
 Proximal_Phalanx3, _, _ = STL_loader(file_name[1], size).load()
