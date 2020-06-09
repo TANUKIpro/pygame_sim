@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 import sys, os, traceback, time
 from functools import lru_cache
 from math import sin, cos, sqrt, radians

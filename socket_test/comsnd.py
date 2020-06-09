@@ -7,7 +7,6 @@ CHR_CAN     = '\18'
 CHR_EOT     = '\04'
 
 def com_send(mess):
-
     while True:
         try:
             # 通信の確立
