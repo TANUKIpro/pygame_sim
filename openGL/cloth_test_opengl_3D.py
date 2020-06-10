@@ -204,6 +204,7 @@ class OpenGL_sim:
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
         glViewport(0,0,screen_size[0],screen_size[1])
         glMatrixMode(GL_PROJECTION)
+        matrix = glGetDouble( GL_PROJECTION_MATRIX )
         glLoadIdentity()
         gluPerspective(self.camera_wide_angle,float(screen_size[0])/float(screen_size[1]), 0.1, 100.0)
         glMatrixMode(GL_MODELVIEW)
@@ -236,6 +237,7 @@ class OpenGL_sim:
             self.drawText_3D("Z", 0., 0., 5.)
             self.drawAxis()
 
+
 gl_set = OpenGL_sim()
 full_path = "/Users/ryotaro/py_projects/pygame_sim/model"
 file_name = [full_path+"/Index/Metacarpal3_01.stl",
@@ -260,7 +262,7 @@ def draw():
         gl_set.drawPolygon(idx_MddPh)
     for idx_DisPh in Distal_Phalanxh3:
         gl_set.drawPolygon(idx_DisPh)
-
+    #glMatrixMode(GL_PROJECTION)
     glFlush()
     glutSwapBuffers()
     pygame.display.flip()
