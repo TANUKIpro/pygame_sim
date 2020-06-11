@@ -108,6 +108,7 @@ class GLWidget(QtOpenGL.QGLWidget):
 
 
 class MainWindow(QMainWindow):
+
     def __init__(self):
         QMainWindow.__init__(self)    # call the init for the parent class
 

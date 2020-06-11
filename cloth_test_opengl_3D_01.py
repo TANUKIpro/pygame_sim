@@ -11,15 +11,7 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 from stl import mesh
 import ctypes
-"""
-try:
-    sys.path.append("/Users/ryotaro/py_projects/pygame_sim/pgu")
-    from pgu import gui
-except:
-    print("No module named pgu.\n\
-           Clone this [https://github.com/parogers/pgu.git] or pass wo tose")
-    sys.exit()
-"""
+
 screen_size = [800,600]
 multisample = 16
 window_title = "STL VIEW"
