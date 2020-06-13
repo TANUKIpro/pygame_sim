@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import sys, os, traceback, time
 from functools import lru_cache
 from math import sin, cos, sqrt, radians
@@ -8,19 +7,15 @@ from PyQt5 import QtCore
 from PyQt5.QtGui import QPainter, QColor, QFont
 from PyQt5.QtWidgets import *
 from PyQt5 import QtOpenGL
+
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
+
 from stl import mesh
 import ctypes
 
 screen_size = [800,600]
-window_title = "STL VIEW"
-
-
-glHint(GL_PERSPECTIVE_CORRECTION_HINT,GL_NICEST)
-glEnable(GL_DEPTH_TEST)
-glPointSize(4)
 
 class STL_loader:
     def __init__(self, file_name, size):
@@ -186,10 +181,11 @@ class OpenGL_sim:
                 glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ord(character));
 
     def set_AxisViw_and_CameraAngle(self,org_point=True, axis=True):
-        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
-        glViewport(0,0,screen_size[0],screen_size[1])
-        glMatrixMode(GL_PROJECTION)
-        matrix = glGetDouble( GL_PROJECTION_MATRIX )
+        print("call")
+        #glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
+        #glViewport(0,0,screen_size[0],screen_size[1])
+        #glMatrixMode(GL_PROJECTION)
+        """
         glLoadIdentity()
         gluPerspective(self.camera_wide_angle,float(screen_size[0])/float(screen_size[1]), 0.1, 100.0)
         glMatrixMode(GL_MODELVIEW)
@@ -221,9 +217,75 @@ class OpenGL_sim:
             self.drawText_3D("Y", 0., 5., 0.)
             self.drawText_3D("Z", 0., 0., 5.)
             self.drawAxis()
+        """
+
+class Draw(QtOpenGL.QGLWidget):
+    def __init__(self, parent=None):
+        self.gl_set = OpenGL_sim()
+        #self.gl_set.get_input()
+        self.draw()
+
+        self.parent = parent
+        QtOpenGL.QGLWidget.__init__(self, parent)
+        self.setMinimumSize(500, 500)
+
+    def draw(self):
+        self.gl_set.set_AxisViw_and_CameraAngle(org_point=True, axis=True)
+        #self.gl_set.drawText("TEST", 5, 580)
+        """
+        for idx_Meta in Metacarpal3:
+            self.gl_set.drawPolygon(idx_Meta)
+            print("call")
+        for idx_PrxPh in Proximal_Phalanx3:
+            self.gl_set.drawPolygon(idx_PrxPh)
+        for idx_MddPh in Middle_Phalanxh3:
+            self.gl_set.drawPolygon(idx_MddPh)
+        for idx_DisPh in Distal_Phalanxh3:
+            self.gl_set.drawPolygon(idx_DisPh)
+        """
+        glFlush()
+
+        self.updateGL()
 
 
-gl_set = OpenGL_sim()
+class MainWindow(QMainWindow):
+    def __init__(self, parent=None):
+        QMainWindow.__init__(self)
+        self.resize(*screen_size)
+        self.setWindowTitle("Cloth test OpenGL with PyQt5 002")
+
+        self.glWidget = Draw(self)
+        self.initGUI()
+
+        """
+        timer = QtCore.QTimer(self)
+        timer.setInterval(20)
+        timer.timeout.connect(self.glWidget.updateGL)
+        timer.start()
+        """
+
+    def initGUI(self):
+        central_widget = QWidget()
+        gui_layout = QVBoxLayout()
+        central_widget.setLayout(gui_layout)
+
+        self.setCentralWidget(central_widget)
+
+        gui_layout.addWidget(self.glWidget)
+
+        sliderX = QSlider(QtCore.Qt.Horizontal)
+        #sliderX.valueChanged.connect(lambda val: self.glWidget.setRotX(val))
+
+        sliderY = QSlider(QtCore.Qt.Horizontal)
+        #sliderY.valueChanged.connect(lambda val: self.glWidget.setRotY(val))
+
+        sliderZ = QSlider(QtCore.Qt.Horizontal)
+        #sliderZ.valueChanged.connect(lambda val: self.glWidget.setRotZ(val))
+
+        gui_layout.addWidget(sliderX)
+        gui_layout.addWidget(sliderY)
+        gui_layout.addWidget(sliderZ)
+
 full_path = "/Users/ryotaro/py_projects/pygame_sim/model"
 file_name = [full_path+"/Index/Metacarpal3_01.stl",
              full_path+"/Index/Proximal_Phalanx3_01.stl",
@@ -235,36 +297,10 @@ Proximal_Phalanx3, _, _ = STL_loader(file_name[1], size).load()
 Middle_Phalanxh3,  _, _ = STL_loader(file_name[2], size).load()
 Distal_Phalanxh3,  _, _ = STL_loader(file_name[3], size).load()
 
-def draw():
-    gl_set.set_AxisViw_and_CameraAngle(org_point=True, axis=True)
-    gl_set.drawText("TEST", 5, 580)
-
-    for idx_Meta in Metacarpal3:
-        gl_set.drawPolygon(idx_Meta)
-    for idx_PrxPh in Proximal_Phalanx3:
-        gl_set.drawPolygon(idx_PrxPh)
-    for idx_MddPh in Middle_Phalanxh3:
-        gl_set.drawPolygon(idx_MddPh)
-    for idx_DisPh in Distal_Phalanxh3:
-        gl_set.drawPolygon(idx_DisPh)
-    glFlush()
-    glutSwapBuffers()
-    pygame.display.flip()
-
-def main():
-    target_fps = 60
-    clock = pygame.time.Clock()
-
-    while True:
-        if not gl_set.get_input(): break
-        draw()
-        clock.tick(target_fps)
-    pygame.quit()
-
 if __name__=="__main__":
-    try:
-        main()
-    except:
-        traceback.print_exc()
-        pygame.quit()
-        sys.exit()
+    app = QApplication(sys.argv)
+
+    win = MainWindow()
+    win.show()
+
+    sys.exit(app.exec_())

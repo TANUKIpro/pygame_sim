@@ -102,12 +102,10 @@ class OpenGL_sim:
         for event in pygame.event.get():
             if   event.type == QUIT:
                 return False
-            #elif event.type == KEYDOWN:
-            #    if event.key == K_ESCAPE:
-            #        return False
             elif event.type == MOUSEBUTTONDOWN:
-                if   event.button == 4: self.camera_radius -= move_pix
-                elif event.button == 5: self.camera_radius += move_pix
+                # マウスのホイール操作
+                if   event.button == 4: self.camera_radius -= move_pix;print("event.button == 4")
+                elif event.button == 5: self.camera_radius += move_pix;print("event.button == 5")
 
         if mouse_buttons[0]:
             self.camera_rot[0] += mouse_rel[0]
@@ -228,7 +226,6 @@ class OpenGL_sim:
             self.drawText_3D("Y", 0., 5., 0.)
             self.drawText_3D("Z", 0., 0., 5.)
             self.drawAxis()
-
 
 gl_set = OpenGL_sim()
 full_path = "/Users/ryotaro/py_projects/pygame_sim/model"
