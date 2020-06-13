@@ -8,9 +8,9 @@ from OpenGL.GLUT import *
 
 
 org = tuple((0,0,0))
-org_points = [[tuple((0, 0, 0)), tuple((5, 0, 0))],
-              [tuple((0, 0, 0)), tuple((0, 5, 0))],
-              [tuple((0, 0, 0)), tuple((0, 0, 5))]]
+org_points = [[tuple((0, 0, 0)), tuple((3, 0, 0))],
+              [tuple((0, 0, 0)), tuple((0, 3, 0))],
+              [tuple((0, 0, 0)), tuple((0, 0, 3))]]
 
 def drawEdge(points):
     glColor3f(0,0,0)

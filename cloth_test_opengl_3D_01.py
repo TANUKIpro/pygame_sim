@@ -104,12 +104,13 @@ class OpenGL_sim:
                 return False
             elif event.type == MOUSEBUTTONDOWN:
                 # マウスのホイール操作
-                if   event.button == 4: self.camera_radius -= move_pix;print("event.button == 4")
-                elif event.button == 5: self.camera_radius += move_pix;print("event.button == 5")
+                if   event.button == 4: self.camera_radius -= move_pix;
+                elif event.button == 5: self.camera_radius += move_pix;
 
         if mouse_buttons[0]:
             self.camera_rot[0] += mouse_rel[0]
             self.camera_rot[1] += mouse_rel[1]
+            print(mouse_rel)
         return True
 
     def drawEdge(self, points):

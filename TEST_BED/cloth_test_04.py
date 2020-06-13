@@ -156,7 +156,7 @@ mouse_pos = (0, 0)
 
 # dxf analysation
 #file_name="model/extensor_hood_test001.dxf"
-file_name="model/extensor_hood_test002.dxf"
+file_name="../model/extensor_hood_test002.dxf"
 dxf = dxfgrabber.readfile(file_name)
 
 for i, layer in enumerate(dxf.layers):
