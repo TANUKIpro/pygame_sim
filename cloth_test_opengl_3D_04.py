@@ -2,17 +2,23 @@
 import sys, os, traceback, time
 from functools import lru_cache
 from math import sin, cos, sqrt, radians
+
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
+from OpenGL.arrays import vbo
+
 from PyQt5.QtWidgets import *
 from PyQt5 import QtCore as Qt
 from PyQt5.QtCore import *
 from PyQt5.QtOpenGL import *
+
 from stl import mesh
 from stl_load_class import STL_loader
 from drawer_class import drawPolygon, drawText, drawText_3D, drawAxis
 import ctypes
+
+########   https://nrotella.github.io/journal/first-steps-python-qt-opengl.html   ########
 
 window_title = "Cloth SIM@PyQt5 v.0.3"
 screen_size = [700, 600]
