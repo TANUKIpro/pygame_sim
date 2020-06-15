@@ -33,25 +33,31 @@ file_name = [to_models+finger+names_list[0],
              to_models+finger+names_list[1],
              to_models+finger+names_list[2],
              to_models+finger+names_list[3]]
-size = 1/15
+size = 1/30
+"""
 Metacarpal3,       _, _ = STL_loader(file_name[0], size).load()
 Proximal_Phalanx3, _, _ = STL_loader(file_name[1], size).load()
 Middle_Phalanxh3,  _, _ = STL_loader(file_name[2], size).load()
 Distal_Phalanxh3,  _, _ = STL_loader(file_name[3], size).load()
-
+"""
 ##########    https://qiita.com/ousttrue/items/e343baabdbdd6b7891c4    ##########
 
+Metacarpal3 = STL_loader(file_name[0], size)
+vertices, indices = Metacarpal3.ver_and_ind()
+colors = Metacarpal3.color(vertices)
+"""
+sys.exit()
 
 s=0.5
 vertices=[
-        -s, -s, -s,
-         s, -s, -s,
-         s,  s, -s,
-        -s,  s, -s,
-        -s, -s,  s,
-         s, -s,  s,
-         s,  s,  s,
-        -s,  s,  s,
+        -s, -s, -s,   # 0
+         s, -s, -s,   # 1
+         s,  s, -s,   # 2
+        -s,  s, -s,   # 3
+        -s, -s,  s,   # 4
+         s, -s,  s,   # 5
+         s,  s,  s,   # 6
+        -s,  s,  s,   # 7
         ]
 colors=[
         1, 0, 0,
@@ -63,7 +69,6 @@ colors=[
         1, 0, 0,
         1, 0, 0,
         ]
-
 indices=[
         0, 1, 2, 2, 3, 0,
         0, 4, 5, 5, 1, 0,
@@ -72,8 +77,7 @@ indices=[
         3, 7, 4, 4, 0, 3,
         4, 7, 6, 6, 5, 4,
         ]
-
-
+"""
 #
 # 描画関数 glBegin
 #
@@ -202,7 +206,7 @@ def disp_func():
 if __name__=="__main__":
     glutInit(sys.argv)
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
-    glutInitWindowSize(256, 256)
+    glutInitWindowSize(500, 500)
     glutCreateWindow(b"vbo")
     glutDisplayFunc(disp_func)
     glutIdleFunc(disp_func)
