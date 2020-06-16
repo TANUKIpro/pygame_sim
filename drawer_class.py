@@ -103,19 +103,19 @@ def create_vbo(buffers, vertices, colors, indices):
     buffers = glGenBuffers(3)
     glBindBuffer(GL_ARRAY_BUFFER, buffers[0])
     glBufferData(GL_ARRAY_BUFFER,
-            len(vertices)*4,  # byte size
-            (ctypes.c_float*len(vertices))(*vertices), # 謎のctypes
-            GL_STATIC_DRAW)
+                 len(vertices)*4,  # byte size
+                 (ctypes.c_float*len(vertices))(*vertices),
+                 GL_STATIC_DRAW)
     glBindBuffer(GL_ARRAY_BUFFER, buffers[1])
     glBufferData(GL_ARRAY_BUFFER,
-            len(colors)*4, # byte size
-            (ctypes.c_float*len(colors))(*colors),  # 謎のctypes
-            GL_STATIC_DRAW)
+                 len(colors)*4, # byte size
+                 (ctypes.c_float*len(colors))(*colors),
+                 GL_STATIC_DRAW)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[2])
     glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-            len(indices)*4, # byte size
-            (ctypes.c_uint*len(indices))(*indices),  # 謎のctypes
-            GL_STATIC_DRAW)
+                 len(indices)*4, # byte size
+                 (ctypes.c_uint*len(indices))(*indices),
+                 GL_STATIC_DRAW)
     return buffers
 
 def draw_vbo(buffers, indices):

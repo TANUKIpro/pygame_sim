@@ -5,7 +5,10 @@ from math import sin, cos, sqrt, radians
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
+from PyQt5 import QtGui
 from PyQt5.QtWidgets import *
+from PyQt5.QtWidgets import QHBoxLayout, QFrame, QSplitter, QTabWidget
+from PyQt5.QtWidgets import QRadioButton, QButtonGroup
 from PyQt5 import QtCore as Qt
 from PyQt5.QtCore import *
 from PyQt5.QtOpenGL import *
@@ -16,7 +19,7 @@ import ctypes
 import numpy as np
 
 window_title = "Cloth SIM@PyQt5 v.0.3"
-screen_size = [700, 600]
+screen_size = [600, 500]
 
 to_models = "/Users/ryotaro/py_projects/pygame_sim/model"
 finger = "/Index"
@@ -41,16 +44,15 @@ ProP_ver, ProP_col, ProP_ind = Proximal_Phalanx3.ver_col_ind()
 MidP_ver, MidP_col, MidP_ind = Middle_Phalanxh3.ver_col_ind()
 DisP_ver, DisP_col, DisP_ind = Distal_Phalanxh3.ver_col_ind()
 
-
 class QTGLWidget2(QGLWidget):
     Meta_buff=np.array([None])
     ProP_buff=np.array([None])
     MidP_buff=np.array([None])
     DisP_buff=np.array([None])
+    #Meta_angle, ProP_angle, MidP_angle, DisP_angle = 0., 0., 0., 0.
     def __init__(self, parent):
         QGLWidget.__init__(self, parent)
         self.setMinimumSize(*screen_size)
-
         self.camera_rot = [70,23]
         self.camera_radius = 2.5
         self.camera_center = [0.5,0.5,0.5]
@@ -58,7 +60,6 @@ class QTGLWidget2(QGLWidget):
         self.camera_wide_angle = 60
         self.angle_x, self.angle_y, self.angle_z = 0., 0., 0.
         self.vias_x, self.vias_y, self.vias_z = 0.,0.,0.
-
         self.bool_vias_x, self.bool_vias_y, self.bool_vias_z = False, False, False
         self.org = tuple((0,0,0))
         self.org_points = [[tuple((0, 0, 0)), tuple((5, 0, 0))],
@@ -70,7 +71,14 @@ class QTGLWidget2(QGLWidget):
         self.Meta, self.PrxPh, self.MddPh, self.DisPh = False, False, False, False
         self.keys_list = []
         self.all_camera_status = []
+        self.Meta_angle, self.ProP_angle, self.MidP_angle, self.DisP_angle = 0., 0., 0., 0.
 
+    def joint_listener(self, typ, val):
+        global Meta_angle, ProP_angle, MidP_angle, DisP_angle
+        if   typ=="Meta":self.Meta_angle=val;#print(self.Meta_angle)
+        elif typ=="ProP":self.ProP_angle=val
+        elif typ=="MidP":self.MidP_angle=val
+        elif typ=="DisP":self.DisP_angle=val
 
     def box_listener(self, bool_list):
         self.Meta, self.PrxPh, self.MddPh, self.DisPh = bool_list
@@ -109,7 +117,6 @@ class QTGLWidget2(QGLWidget):
         if type == 'MOVE':
             self.camera_rot[0] += mv_cood[0]
             self.camera_rot[1] += mv_cood[1]
-            #self.update()
         if type == 'WHEEL':
             if   event.angleDelta().y() == 120  : self.camera_radius -= move_pix
             elif event.angleDelta().y() == -120 : self.camera_radius += move_pix
@@ -174,6 +181,10 @@ class QTGLWidget2(QGLWidget):
             if self.DisP_buff.all()==None:
                 DisP_buff = create_vbo(self.DisP_buff, DisP_ver, DisP_col, DisP_ind)
             draw_vbo(DisP_buff, DisP_ind)
+
+        ## 関節角度の表示
+        #drawText(str(int(self.Meta_angle)), 2, 400, *screen_size)
+        print(self.Meta_angle)
         glFlush()
 
     def resizeGL(self, w, h):
@@ -193,16 +204,99 @@ class QTGLWidget2(QGLWidget):
         glLoadIdentity()
         gluPerspective(40.0, 1.0, .1, 100.0)
 
-class QTWidget(QWidget):
-    def __init__(self):
+#####    http://penguinitis.g1.xrea.com/computer/programming/Python/PyQt5/PyQt5-memo/PyQt5-memo.html
+class Joint_Slider(QWidget):
+    def __init__(self, parent=None):
         QWidget.__init__(self)
-        self.clicked_points = [0, 0]
+        self.gl = QTGLWidget2(self)
+        self.Meta_lab = QLabel("0")
+        self.ProP_lab = QLabel("0")
+        self.MidP_lab = QLabel("0")
+        self.DisP_lab = QLabel("0")
+
+        self.Meta_lab.setFont(QtGui.QFont("Sanserif", 10))
+        self.ProP_lab.setFont(QtGui.QFont("Sanserif", 10))
+        self.MidP_lab.setFont(QtGui.QFont("Sanserif", 10))
+        self.DisP_lab.setFont(QtGui.QFont("Sanserif", 10))
+
+        self.initUI()
+
+    def initUI(self):
+        ## Meta,ProP,MidP,DisP
+        Meta_slider = QSlider(Qt.Horizontal)
+        ProP_slider = QSlider(Qt.Horizontal)
+        MidP_slider = QSlider(Qt.Horizontal)
+        DisP_slider = QSlider(Qt.Horizontal)
+
+        Meta_slider.setMinimum(0)
+        Meta_slider.setMaximum(90)
+        Meta_slider.valueChanged.connect(lambda val: self.gl.joint_listener("Meta", val))
+
+        ProP_slider.setMinimum(0)
+        ProP_slider.setMaximum(90)
+        ProP_slider.valueChanged.connect(lambda val: self.gl.joint_listener("ProP",val))
+
+        MidP_slider.setMinimum(0)
+        MidP_slider.setMaximum(90)
+        MidP_slider.valueChanged.connect(lambda val: self.gl.joint_listener("MidP",val))
+
+        DisP_slider.setMinimum(0)
+        DisP_slider.setMaximum(90)
+        DisP_slider.valueChanged.connect(lambda val: self.gl.joint_listener("DisP",val))
+
+        layout = QVBoxLayout()
+        layout.addWidget(Meta_slider)
+        layout.addWidget(ProP_slider)
+        layout.addWidget(MidP_slider)
+        layout.addWidget(DisP_slider)
+
+        self.setLayout(layout)
+
+
+class Bone_CheckBox(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.bool_list = [True, True, True, True]
         self.listCheckBox = names_list
         self.listLabel = []
         for label in range(len(self.listCheckBox)):
             self.listLabel.append("")
         self.gl = QTGLWidget2(self)
+        self.initUI()
+
+    def initUI(self):
+        layout = QGridLayout()
+        for i, v in enumerate(self.listCheckBox):
+            self.listCheckBox[i] = QCheckBox(v)
+            self.listLabel[i] = QLabel()
+            layout.addWidget(self.listCheckBox[i], i+10, 0)
+            layout.addWidget(self.listLabel[i],    i+10, 1)
+
+        sc_button = QPushButton("Show / Clear")
+        sc_button.clicked.connect(self.check_checkbox)
+        layout.addWidget(sc_button, 20, 0)
+
+        rst_button = QPushButton("RESER CAMERA VIEW")
+        rst_button.clicked.connect(self.gl.cameraRESET)
+        layout.addWidget(rst_button, 30, 0)
+
+        self.setLayout(layout)
+
+    def check_checkbox(self):
+        for i, v in enumerate(self.listCheckBox):
+            if v.checkState():
+                self.bool_list[i]=True
+            else:
+                self.bool_list[i]=False
+        self.gl.box_listener(self.bool_list)
+
+class QTWidget(QWidget):
+    def __init__(self):
+        QWidget.__init__(self)
+        self.clicked_points = [0, 0]
+
+        self.gl = QTGLWidget2(self)
+
         self.initUI()
 
         timer = QTimer(self)
@@ -215,28 +309,16 @@ class QTWidget(QWidget):
         self.setLayout(gui_layout)
         gui_layout.addWidget(self.gl)
 
-        for i, v in enumerate(self.listCheckBox):
-            self.listCheckBox[i] = QCheckBox(v)
-            self.listLabel[i] = QLabel()
-            gui_layout.addWidget(self.listCheckBox[i], i+10, 0)
-            gui_layout.addWidget(self.listLabel[i],    i+10, 1)
+        widget1 = Joint_Slider(self)
+        widget2 = Bone_CheckBox(self)
 
-        self.sc_button = QPushButton("Show / Clear")
-        self.sc_button.clicked.connect(self.check_checkbox)
-        # (ウェジット、行、列)
-        gui_layout.addWidget(self.sc_button, 20, 0)
+        tab = QTabWidget()
+        tab.addTab(widget1, "Joint slider")
+        tab.addTab(widget2, "Check Box (Bone)")
 
-        self.rst_button = QPushButton("RESER CAMERA VIEW")
-        self.rst_button.clicked.connect(self.gl.cameraRESET)
-        gui_layout.addWidget(self.rst_button, 30, 0)
+        gui_layout.addWidget(tab)
 
-    def check_checkbox(self):
-        for i, v in enumerate(self.listCheckBox):
-            if v.checkState():
-                self.bool_list[i]=True
-            else:
-                self.bool_list[i]=False
-        self.gl.box_listener(self.bool_list)
+        self.setLayout(gui_layout)
 
     def keyPressEvent(self, event):
         self.gl.key_listener(event)
@@ -263,14 +345,10 @@ class QTWidget(QWidget):
         self.gl.mouse_listener("MOVE", e, mv_cood=[-mvX*0.2, -mvY*0.2])
         self.update()
 
-def main():
+if __name__=='__main__':
     app = QApplication(sys.argv)
     w = QTWidget()
     w.setWindowTitle(window_title)
     w.show()
 
     sys.exit(app.exec_())
-
-
-if __name__=='__main__':
-    main()
