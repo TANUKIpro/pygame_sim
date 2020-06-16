@@ -44,6 +44,7 @@ ProP_ver, ProP_col, ProP_ind = Proximal_Phalanx3.ver_col_ind()
 MidP_ver, MidP_col, MidP_ind = Middle_Phalanxh3.ver_col_ind()
 DisP_ver, DisP_col, DisP_ind = Distal_Phalanxh3.ver_col_ind()
 
+Meta_angle, ProP_angle, MidP_angle, DisP_angle = 0., 0., 0., 0.
 class QTGLWidget2(QGLWidget):
     Meta_buff=np.array([None])
     ProP_buff=np.array([None])
@@ -71,14 +72,14 @@ class QTGLWidget2(QGLWidget):
         self.Meta, self.PrxPh, self.MddPh, self.DisPh = False, False, False, False
         self.keys_list = []
         self.all_camera_status = []
-        self.Meta_angle, self.ProP_angle, self.MidP_angle, self.DisP_angle = 0., 0., 0., 0.
+        #self.Meta_angle, self.ProP_angle, self.MidP_angle, self.DisP_angle = 0., 0., 0., 0.
 
     def joint_listener(self, typ, val):
         global Meta_angle, ProP_angle, MidP_angle, DisP_angle
-        if   typ=="Meta":self.Meta_angle=val;#print(self.Meta_angle)
-        elif typ=="ProP":self.ProP_angle=val
-        elif typ=="MidP":self.MidP_angle=val
-        elif typ=="DisP":self.DisP_angle=val
+        if   typ=="Meta":Meta_angle=val
+        elif typ=="ProP":ProP_angle=val
+        elif typ=="MidP":MidP_angle=val
+        elif typ=="DisP":DisP_angle=val
 
     def box_listener(self, bool_list):
         self.Meta, self.PrxPh, self.MddPh, self.DisPh = bool_list
@@ -126,9 +127,9 @@ class QTGLWidget2(QGLWidget):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         glLoadIdentity()
-        camera_pos = [self.camera_center[0] + self.camera_radius*cos(radians(self.camera_rot[0]))*cos(radians(self.camera_rot[1])),
-                      self.camera_center[1] + self.camera_radius*sin(radians(self.camera_rot[1])),
-                      self.camera_center[2] + self.camera_radius*sin(radians(self.camera_rot[0]))*cos(radians(self.camera_rot[1]))]
+        camera_pos = [self.camera_center[0]+self.camera_radius*cos(radians(self.camera_rot[0]))*cos(radians(self.camera_rot[1])),
+                      self.camera_center[1]+self.camera_radius*sin(radians(self.camera_rot[1])),
+                      self.camera_center[2]+self.camera_radius*sin(radians(self.camera_rot[0]))*cos(radians(self.camera_rot[1]))]
         gluLookAt(camera_pos[0], camera_pos[1], camera_pos[2],
                   self.camera_center[0], self.camera_center[1], self.camera_center[2], 0,1,0)
 
@@ -183,8 +184,7 @@ class QTGLWidget2(QGLWidget):
             draw_vbo(DisP_buff, DisP_ind)
 
         ## 関節角度の表示
-        #drawText(str(int(self.Meta_angle)), 2, 400, *screen_size)
-        print(self.Meta_angle)
+        drawText(str(int(Meta_angle)), 2, 400, *screen_size)
         glFlush()
 
     def resizeGL(self, w, h):
