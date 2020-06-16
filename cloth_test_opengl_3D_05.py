@@ -44,6 +44,10 @@ ProP_ver, ProP_col, ProP_ind = Proximal_Phalanx3.ver_col_ind()
 MidP_ver, MidP_col, MidP_ind = Middle_Phalanxh3.ver_col_ind()
 DisP_ver, DisP_col, DisP_ind = Distal_Phalanxh3.ver_col_ind()
 
+Meta_max_index = np.argmax(np.array(Metacarpal3.all_mesh_particle)[:,1])
+Meta_max_cood = Metacarpal3.all_mesh_particle[Meta_max_index]
+print("Metacarpal3 max coordinates : ", Meta_max_cood)
+
 Meta_angle, ProP_angle, MidP_angle, DisP_angle = 0., 0., 0., 0.
 class QTGLWidget2(QGLWidget):
     Meta_buff=np.array([None])
@@ -146,6 +150,12 @@ class QTGLWidget2(QGLWidget):
         glVertex3fv(self.org)
         glEnd()
 
+        glColor3f(0, 1, 0)
+        glPointSize(30)
+        glBegin(GL_POINTS)
+        glVertex3fv(Meta_max_cood)
+        glEnd()
+
         drawText_3D("X", 3., 0., 0.)
         drawText_3D("Y", 0., 3., 0.)
         drawText_3D("Z", 0., 0., 3.)
@@ -158,6 +168,11 @@ class QTGLWidget2(QGLWidget):
             if self.Meta_buff.all()==None:
                 Meta_buff = create_vbo(self.Meta_buff, Meta_ver, Meta_col, Meta_ind)
             draw_vbo(Meta_buff, Meta_ind)
+
+            glTranslatef(0, -Meta_max_cood[1], 0)
+            glRotatef(Meta_angle, 1, 0, 0)
+            #glTranslatef(0, Meta_max_cood[1], 0)
+            #glTranslatef(Meta_max_cood[0], Meta_max_cood[1], Meta_max_cood[2])
 
         if not self.PrxPh:
             global ProP_buff
@@ -183,8 +198,20 @@ class QTGLWidget2(QGLWidget):
                 DisP_buff = create_vbo(self.DisP_buff, DisP_ver, DisP_col, DisP_ind)
             draw_vbo(DisP_buff, DisP_ind)
 
+        ## 座標の表示    -self.camera_cood[0][0], -self.camera_cood[1][0], -self.camera_cood[2][0]
+        drawText("Camera Pos : "+str(round(camera_pos[0], 2))+", "\
+                                +str(round(camera_pos[1], 2))+", "\
+                                +str(round(camera_pos[2], 2)), 2, 12, *screen_size)
+
+        drawText("Camera Axe : "+str(round(self.camera_cood[0][0], 2))+", "\
+                                +str(round(self.camera_cood[1][0], 2))+", "\
+                                +str(round(self.camera_cood[2][0], 2)), 2, 2,  *screen_size)
         ## 関節角度の表示
-        drawText(str(int(Meta_angle)), 2, 400, *screen_size)
+        drawText("Meta Angle : "  + str(float(Meta_angle)), 2, screen_size[1]-10, *screen_size)
+        drawText("ProP Angle : "  + str(float(ProP_angle)), 2, screen_size[1]-20, *screen_size)
+        drawText("MidP Angle : "  + str(float(MidP_angle)), 2, screen_size[1]-30, *screen_size)
+        drawText("DisP Angle  : " + str(float(DisP_angle)), 2, screen_size[1]-40, *screen_size)
+
         glFlush()
 
     def resizeGL(self, w, h):
