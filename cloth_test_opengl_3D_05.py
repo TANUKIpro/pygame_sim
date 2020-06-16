@@ -11,7 +11,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtOpenGL import *
 from stl import mesh
 from stl_load_class import STL_loader
-from drawer_class import drawPolygon, drawText, drawText_3D, drawAxis
+from drawer_class import drawPolygon, drawText, drawText_3D, drawAxis, create_vbo, draw_vbo
 import ctypes
 import numpy as np
 
@@ -114,37 +114,6 @@ class QTGLWidget2(QGLWidget):
             if   event.angleDelta().y() == 120  : self.camera_radius -= move_pix
             elif event.angleDelta().y() == -120 : self.camera_radius += move_pix
 
-    def create_vbo(self, buffers, vertices, colors, indices):
-        buffers = glGenBuffers(3)
-        glBindBuffer(GL_ARRAY_BUFFER, buffers[0])
-        glBufferData(GL_ARRAY_BUFFER,
-                len(vertices)*4,  # byte size
-                (ctypes.c_float*len(vertices))(*vertices), # 謎のctypes
-                GL_STATIC_DRAW)
-        glBindBuffer(GL_ARRAY_BUFFER, buffers[1])
-        glBufferData(GL_ARRAY_BUFFER,
-                len(colors)*4, # byte size
-                (ctypes.c_float*len(colors))(*colors),  # 謎のctypes
-                GL_STATIC_DRAW)
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[2])
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                len(indices)*4, # byte size
-                (ctypes.c_uint*len(indices))(*indices),  # 謎のctypes
-                GL_STATIC_DRAW)
-        return buffers
-
-    def draw_vbo(self, buffers, indices):
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glEnableClientState(GL_COLOR_ARRAY);
-        glBindBuffer(GL_ARRAY_BUFFER, buffers[0]);
-        glVertexPointer(3, GL_FLOAT, 0, None);
-        glBindBuffer(GL_ARRAY_BUFFER, buffers[1]);
-        glColorPointer(3, GL_FLOAT, 0, None);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[2]);
-        glDrawElements(GL_TRIANGLES, len(indices), GL_UNSIGNED_INT, None);
-        glDisableClientState(GL_COLOR_ARRAY)
-        glDisableClientState(GL_VERTEX_ARRAY);
-
     def paintGL(self):
         glClearColor(self.br, self.bg, self.bb, 0.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -179,34 +148,33 @@ class QTGLWidget2(QGLWidget):
             glPolygonMode(GL_FRONT, GL_LINE)
             glPolygonMode(GL_BACK, GL_LINE)
             if self.Meta_buff.all()==None:
-                Meta_buff = self.create_vbo(self.Meta_buff, Meta_ver, Meta_col, Meta_ind)
-            self.draw_vbo(Meta_buff, Meta_ind)
-            
+                Meta_buff = create_vbo(self.Meta_buff, Meta_ver, Meta_col, Meta_ind)
+            draw_vbo(Meta_buff, Meta_ind)
+
         if not self.PrxPh:
             global ProP_buff
             glPolygonMode(GL_FRONT, GL_LINE)
             glPolygonMode(GL_BACK, GL_LINE)
             if self.ProP_buff.all()==None:
-                ProP_buff = self.create_vbo(self.ProP_buff, ProP_ver, ProP_col, ProP_ind)
-            self.draw_vbo(ProP_buff, ProP_ind)
+                ProP_buff = create_vbo(self.ProP_buff, ProP_ver, ProP_col, ProP_ind)
+            draw_vbo(ProP_buff, ProP_ind)
 
         if not self.MddPh:
             global MidP_buff
             glPolygonMode(GL_FRONT, GL_LINE)
             glPolygonMode(GL_BACK, GL_LINE)
             if self.MidP_buff.all()==None:
-                MidP_buff = self.create_vbo(self.MidP_buff, MidP_ver, MidP_col, MidP_ind)
-            self.draw_vbo(MidP_buff, MidP_ind)
+                MidP_buff = create_vbo(self.MidP_buff, MidP_ver, MidP_col, MidP_ind)
+            draw_vbo(MidP_buff, MidP_ind)
 
         if not self.DisPh:
             global DisP_buff
             glPolygonMode(GL_FRONT, GL_LINE)
             glPolygonMode(GL_BACK, GL_LINE)
             if self.DisP_buff.all()==None:
-                DisP_buff = self.create_vbo(self.DisP_buff, DisP_ver, DisP_col, DisP_ind)
-            self.draw_vbo(DisP_buff, DisP_ind)
+                DisP_buff = create_vbo(self.DisP_buff, DisP_ver, DisP_col, DisP_ind)
+            draw_vbo(DisP_buff, DisP_ind)
         glFlush()
-        #self.updateGL()
 
     def resizeGL(self, w, h):
         glViewport(0, 0, w, h)

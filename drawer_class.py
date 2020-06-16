@@ -98,3 +98,34 @@ def draw_vbo():
     glDrawElements(GL_TRIANGLES, len(indices), GL_UNSIGNED_INT, None);
     glDisableClientState(GL_COLOR_ARRAY)
     glDisableClientState(GL_VERTEX_ARRAY);
+
+def create_vbo(buffers, vertices, colors, indices):
+    buffers = glGenBuffers(3)
+    glBindBuffer(GL_ARRAY_BUFFER, buffers[0])
+    glBufferData(GL_ARRAY_BUFFER,
+            len(vertices)*4,  # byte size
+            (ctypes.c_float*len(vertices))(*vertices), # 謎のctypes
+            GL_STATIC_DRAW)
+    glBindBuffer(GL_ARRAY_BUFFER, buffers[1])
+    glBufferData(GL_ARRAY_BUFFER,
+            len(colors)*4, # byte size
+            (ctypes.c_float*len(colors))(*colors),  # 謎のctypes
+            GL_STATIC_DRAW)
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[2])
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+            len(indices)*4, # byte size
+            (ctypes.c_uint*len(indices))(*indices),  # 謎のctypes
+            GL_STATIC_DRAW)
+    return buffers
+
+def draw_vbo(buffers, indices):
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
+    glBindBuffer(GL_ARRAY_BUFFER, buffers[0]);
+    glVertexPointer(3, GL_FLOAT, 0, None);
+    glBindBuffer(GL_ARRAY_BUFFER, buffers[1]);
+    glColorPointer(3, GL_FLOAT, 0, None);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[2]);
+    glDrawElements(GL_TRIANGLES, len(indices), GL_UNSIGNED_INT, None);
+    glDisableClientState(GL_COLOR_ARRAY)
+    glDisableClientState(GL_VERTEX_ARRAY);
