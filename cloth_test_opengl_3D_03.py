@@ -30,10 +30,10 @@ file_name = [to_models+finger+names_list[0],
              to_models+finger+names_list[2],
              to_models+finger+names_list[3]]
 size = 1/15
-Metacarpal3,       _, _ = STL_loader(file_name[0], size).load()
-Proximal_Phalanx3, _, _ = STL_loader(file_name[1], size).load()
-Middle_Phalanxh3,  _, _ = STL_loader(file_name[2], size).load()
-Distal_Phalanxh3,  _, _ = STL_loader(file_name[3], size).load()
+Metacarpal3       = STL_loader(file_name[0], size).triangle_mesh
+Proximal_Phalanx3 = STL_loader(file_name[1], size).triangle_mesh
+Middle_Phalanxh3  = STL_loader(file_name[2], size).triangle_mesh
+Distal_Phalanxh3  = STL_loader(file_name[3], size).triangle_mesh
 
 class QTGLWidget2(QGLWidget):
     def __init__(self, parent):
