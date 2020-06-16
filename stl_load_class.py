@@ -30,7 +30,7 @@ class STL_loader:
             for particle in _m:
                 self.all_mesh_particle.append(particle)
 
-    def ver_and_ind(self):
+    def ver_col_ind(self):
         # 頂点座標
         target = np.array(self.all_mesh_particle)
         datanum, corner = target.shape
@@ -43,7 +43,7 @@ class STL_loader:
                 ver[i] = top_cood.tolist()
                 i += 1
             ind[one_tri] = one_tri
-        return ver, ind
+        return ver, self.color(ver), ind
 
     def color(self, ver, _r=1, _g=1, _b=1):
         col = np.zeros_like(ver).tolist()
