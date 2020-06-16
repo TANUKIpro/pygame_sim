@@ -13,6 +13,7 @@ from stl import mesh
 from stl_load_class import STL_loader
 from drawer_class import drawPolygon, drawText, drawText_3D, drawAxis
 import ctypes
+import numpy as np
 
 window_title = "Cloth SIM@PyQt5 v.0.3"
 screen_size = [700, 600]
@@ -35,7 +36,17 @@ Proximal_Phalanx3 = STL_loader(file_name[1], size)
 Middle_Phalanxh3  = STL_loader(file_name[2], size)
 Distal_Phalanxh3  = STL_loader(file_name[3], size)
 
+Meta_ver, Meta_col, Meta_ind = Metacarpal3.ver_col_ind()
+ProP_ver, ProP_col, ProP_ind = Proximal_Phalanx3.ver_col_ind()
+MidP_ver, MidP_col, MidP_ind = Middle_Phalanxh3.ver_col_ind()
+DisP_ver, DisP_col, DisP_ind = Distal_Phalanxh3.ver_col_ind()
+
+
 class QTGLWidget2(QGLWidget):
+    Meta_buff=np.array([None])
+    ProP_buff=np.array([None])
+    MidP_buff=np.array([None])
+    DisP_buff=np.array([None])
     def __init__(self, parent):
         QGLWidget.__init__(self, parent)
         self.setMinimumSize(*screen_size)
@@ -59,6 +70,7 @@ class QTGLWidget2(QGLWidget):
         self.Meta, self.PrxPh, self.MddPh, self.DisPh = False, False, False, False
         self.keys_list = []
         self.all_camera_status = []
+
 
     def box_listener(self, bool_list):
         self.Meta, self.PrxPh, self.MddPh, self.DisPh = bool_list
@@ -102,6 +114,37 @@ class QTGLWidget2(QGLWidget):
             if   event.angleDelta().y() == 120  : self.camera_radius -= move_pix
             elif event.angleDelta().y() == -120 : self.camera_radius += move_pix
 
+    def create_vbo(self, buffers, vertices, colors, indices):
+        buffers = glGenBuffers(3)
+        glBindBuffer(GL_ARRAY_BUFFER, buffers[0])
+        glBufferData(GL_ARRAY_BUFFER,
+                len(vertices)*4,  # byte size
+                (ctypes.c_float*len(vertices))(*vertices), # 謎のctypes
+                GL_STATIC_DRAW)
+        glBindBuffer(GL_ARRAY_BUFFER, buffers[1])
+        glBufferData(GL_ARRAY_BUFFER,
+                len(colors)*4, # byte size
+                (ctypes.c_float*len(colors))(*colors),  # 謎のctypes
+                GL_STATIC_DRAW)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[2])
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                len(indices)*4, # byte size
+                (ctypes.c_uint*len(indices))(*indices),  # 謎のctypes
+                GL_STATIC_DRAW)
+        return buffers
+
+    def draw_vbo(self, buffers, indices):
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glEnableClientState(GL_COLOR_ARRAY);
+        glBindBuffer(GL_ARRAY_BUFFER, buffers[0]);
+        glVertexPointer(3, GL_FLOAT, 0, None);
+        glBindBuffer(GL_ARRAY_BUFFER, buffers[1]);
+        glColorPointer(3, GL_FLOAT, 0, None);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[2]);
+        glDrawElements(GL_TRIANGLES, len(indices), GL_UNSIGNED_INT, None);
+        glDisableClientState(GL_COLOR_ARRAY)
+        glDisableClientState(GL_VERTEX_ARRAY);
+
     def paintGL(self):
         glClearColor(self.br, self.bg, self.bb, 0.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -132,17 +175,36 @@ class QTGLWidget2(QGLWidget):
         drawAxis()
 
         if not self.Meta:
-            for idx_Meta in Metacarpal3:
-                drawPolygon(idx_Meta)
+            global Meta_buff
+            glPolygonMode(GL_FRONT, GL_LINE)
+            glPolygonMode(GL_BACK, GL_LINE)
+            if self.Meta_buff.all()==None:
+                Meta_buff = self.create_vbo(self.Meta_buff, Meta_ver, Meta_col, Meta_ind)
+            self.draw_vbo(Meta_buff, Meta_ind)
+            
         if not self.PrxPh:
-            for idx_PrxPh in Proximal_Phalanx3:
-                drawPolygon(idx_PrxPh)
+            global ProP_buff
+            glPolygonMode(GL_FRONT, GL_LINE)
+            glPolygonMode(GL_BACK, GL_LINE)
+            if self.ProP_buff.all()==None:
+                ProP_buff = self.create_vbo(self.ProP_buff, ProP_ver, ProP_col, ProP_ind)
+            self.draw_vbo(ProP_buff, ProP_ind)
+
         if not self.MddPh:
-            for idx_MddPh in Middle_Phalanxh3:
-                drawPolygon(idx_MddPh)
+            global MidP_buff
+            glPolygonMode(GL_FRONT, GL_LINE)
+            glPolygonMode(GL_BACK, GL_LINE)
+            if self.MidP_buff.all()==None:
+                MidP_buff = self.create_vbo(self.MidP_buff, MidP_ver, MidP_col, MidP_ind)
+            self.draw_vbo(MidP_buff, MidP_ind)
+
         if not self.DisPh:
-            for idx_DisPh in Distal_Phalanxh3:
-                drawPolygon(idx_DisPh)
+            global DisP_buff
+            glPolygonMode(GL_FRONT, GL_LINE)
+            glPolygonMode(GL_BACK, GL_LINE)
+            if self.DisP_buff.all()==None:
+                DisP_buff = self.create_vbo(self.DisP_buff, DisP_ver, DisP_col, DisP_ind)
+            self.draw_vbo(DisP_buff, DisP_ind)
         glFlush()
         #self.updateGL()
 

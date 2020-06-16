@@ -42,42 +42,9 @@ Distal_Phalanxh3,  _, _ = STL_loader(file_name[3], size).load()
 """
 ##########    https://qiita.com/ousttrue/items/e343baabdbdd6b7891c4    ##########
 
-Metacarpal3 = STL_loader(file_name[0], size)
-vertices, indices = Metacarpal3.ver_and_ind()
-colors = Metacarpal3.color(vertices)
-"""
-sys.exit()
+Metacarpal3 = STL_loader(to_models+"/only_index.stl", size)
+vertices, colors, indices = Metacarpal3.ver_col_ind()
 
-s=0.5
-vertices=[
-        -s, -s, -s,   # 0
-         s, -s, -s,   # 1
-         s,  s, -s,   # 2
-        -s,  s, -s,   # 3
-        -s, -s,  s,   # 4
-         s, -s,  s,   # 5
-         s,  s,  s,   # 6
-        -s,  s,  s,   # 7
-        ]
-colors=[
-        1, 0, 0,
-        1, 0, 0,
-        1, 0, 0,
-        1, 0, 0,
-        1, 0, 0,
-        1, 0, 0,
-        1, 0, 0,
-        1, 0, 0,
-        ]
-indices=[
-        0, 1, 2, 2, 3, 0,
-        0, 4, 5, 5, 1, 0,
-        1, 5, 6, 6, 2, 1,
-        2, 6, 7, 7, 3, 2,
-        3, 7, 4, 4, 0, 3,
-        4, 7, 6, 6, 5, 4,
-        ]
-"""
 #
 # 描画関数 glBegin
 #

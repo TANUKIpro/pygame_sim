@@ -86,3 +86,15 @@ def drawText_3D(value, x, y, z):
             glRasterPos2i(x, y-(lines*18))
         else:
             glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ord(character));
+
+def draw_vbo():
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
+    glBindBuffer(GL_ARRAY_BUFFER, buffers[0]);
+    glVertexPointer(3, GL_FLOAT, 0, None);
+    glBindBuffer(GL_ARRAY_BUFFER, buffers[1]);
+    glColorPointer(3, GL_FLOAT, 0, None);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[2]);
+    glDrawElements(GL_TRIANGLES, len(indices), GL_UNSIGNED_INT, None);
+    glDisableClientState(GL_COLOR_ARRAY)
+    glDisableClientState(GL_VERTEX_ARRAY);
