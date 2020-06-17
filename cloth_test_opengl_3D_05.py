@@ -47,10 +47,10 @@ MidP_ver, MidP_col, MidP_ind = Middle_Phalanxh3.ver_col_ind()
 DisP_ver, DisP_col, DisP_ind = Distal_Phalanxh3.ver_col_ind()
 
 ## フレーム用カラー
-Meta_Frame_col = Metacarpal3.color(Meta_ver, _r=1, _g=1, _b=0)
-ProP_Frame_col = Metacarpal3.color(ProP_ver, _r=1, _g=1, _b=0)
-MidP_Frame_col = Metacarpal3.color(MidP_ver, _r=1, _g=1, _b=0)
-DisP_Frame_col = Metacarpal3.color(DisP_ver, _r=1, _g=1, _b=0)
+Meta_Frame_col = Metacarpal3.color(Meta_ver, _r=0, _g=0, _b=0)
+ProP_Frame_col = Metacarpal3.color(ProP_ver, _r=0, _g=0, _b=0)
+MidP_Frame_col = Metacarpal3.color(MidP_ver, _r=0, _g=0, _b=0)
+DisP_Frame_col = Metacarpal3.color(DisP_ver, _r=0, _g=0, _b=0)
 
 Meta_max_index = np.argmax(np.array(Metacarpal3.all_mesh_particle)[:,1])
 Meta_max_cood = Metacarpal3.all_mesh_particle[Meta_max_index]
@@ -189,38 +189,44 @@ class QTGLWidget2(QGLWidget):
             if self.Meta_buff.all()==None:
                 Meta_buff    = create_vbo(self.Meta_buff, Meta_ver, Meta_col, Meta_ind)
                 outMeta_buff = create_vbo(self.outMeta_buff, Meta_ver, Meta_Frame_col, Meta_ind)
-            #glPolygonMode(GL_FRONT, GL_FILL)
-            draw_vbo(outMeta_buff, Meta_ind)
-            draw_vbo(Meta_buff, Meta_ind, mode_front=GL_FILL)
 
-            #glPolygonMode(GL_FRONT, GL_LINE)
-            #glPolygonMode(GL_BACK, GL_LINE)
+            draw_vbo(Meta_buff, Meta_ind)
+            draw_vbo(outMeta_buff, Meta_ind, mode_front=GL_LINE)
 
         if not PrxPh:
-            global ProP_buff
+            global ProP_buff, outProP_buff
             glTranslatef(0, (Meta_max_cood[1]-0.2)-Meta_angle*0.01, Meta_angle*0.002)
             if self.ProP_buff.all()==None:
-                ProP_buff = create_vbo(self.ProP_buff, ProP_ver, ProP_col, ProP_ind)
+                ProP_buff    = create_vbo(self.ProP_buff, ProP_ver, ProP_col, ProP_ind)
+                outProP_buff = create_vbo(self.outProP_buff, ProP_ver, ProP_Frame_col, ProP_ind)
+
             glRotatef(Meta_angle, 1, 0, 0)
             draw_vbo(ProP_buff, ProP_ind)
+            draw_vbo(outProP_buff, ProP_ind, mode_front=GL_LINE)
 
         if not MddPh:
-            global MidP_buff
+            global MidP_buff, outMidP_buff
             mddp_vias = gaussian_function(sigma=20, mu=60, x=ProP_angle, A=1.7)
             glTranslatef(0, (ProP_max_cood[1]+1.8)-ProP_angle*0.008, -ProP_angle*0.001+mddp_vias)
             if self.MidP_buff.all()==None:
-                MidP_buff = create_vbo(self.MidP_buff, MidP_ver, MidP_col, MidP_ind)
+                MidP_buff    = create_vbo(self.MidP_buff, MidP_ver, MidP_col, MidP_ind)
+                outMidP_buff = create_vbo(self.outMidP_buff, MidP_ver, MidP_Frame_col, MidP_ind)
+
             glRotatef(ProP_angle+3, 1, 0, 0)
             draw_vbo(MidP_buff, MidP_ind)
+            draw_vbo(outMidP_buff, MidP_ind, mode_front=GL_LINE)
 
         if not DisPh:
-            global DisP_buff
+            global DisP_buff, outDisP_buff
             disp_vias = gaussian_function(sigma=25, mu=70, x=MidP_angle, A=1.9)
             glTranslatef(0, (MidP_max_cood[1]-0.95)-MidP_angle*0.009, -MidP_angle*0.005+disp_vias)
             if self.DisP_buff.all()==None:
-                DisP_buff = create_vbo(self.DisP_buff, DisP_ver, DisP_col, DisP_ind)
+                DisP_buff    = create_vbo(self.DisP_buff, DisP_ver, DisP_col, DisP_ind)
+                outDisP_buff = create_vbo(self.outDisP_buff, DisP_ver, DisP_Frame_col, DisP_ind)
+
             glRotatef(MidP_angle+3, 1, 0, 0)
             draw_vbo(DisP_buff, DisP_ind)
+            draw_vbo(outDisP_buff, DisP_ind, mode_front=GL_LINE)
 
         ## 座標の表示    -self.camera_cood[0][0], -self.camera_cood[1][0], -self.camera_cood[2][0]
         drawText("Camera Pos : "+str(round(camera_pos[0], 2))+", "\
