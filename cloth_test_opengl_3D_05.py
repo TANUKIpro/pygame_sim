@@ -17,6 +17,7 @@ from stl_load_class import STL_loader
 from drawer_class import drawPolygon, drawText, drawText_3D, drawAxis, create_vbo, draw_vbo
 import ctypes
 import numpy as np
+from math import sqrt, pi, exp
 
 window_title = "Cloth SIM@PyQt5 v.0.3"
 screen_size = [600, 500]
@@ -25,9 +26,9 @@ to_models = "/Users/ryotaro/py_projects/pygame_sim/model"
 finger = "/Index"
 
 names_list = ["/Metacarpal3_01.stl",
-              "/Proximal_Phalanx3_01.stl",
-              "/Middle_Phalanxh3_01.stl",
-              "/Distal_Phalanxh3_01.stl"]
+              "/Proximal_Phalanx3_01_org.stl",
+              "/Middle_Phalanxh3_01_org.stl",
+              "/Distal_Phalanxh3_01_org.stl"]
 
 file_name = [to_models+finger+names_list[0],
              to_models+finger+names_list[1],
@@ -39,21 +40,48 @@ Proximal_Phalanx3 = STL_loader(file_name[1], size)
 Middle_Phalanxh3  = STL_loader(file_name[2], size)
 Distal_Phalanxh3  = STL_loader(file_name[3], size)
 
+## 頂点座標, カラー, 構成インデックス
 Meta_ver, Meta_col, Meta_ind = Metacarpal3.ver_col_ind()
 ProP_ver, ProP_col, ProP_ind = Proximal_Phalanx3.ver_col_ind()
 MidP_ver, MidP_col, MidP_ind = Middle_Phalanxh3.ver_col_ind()
 DisP_ver, DisP_col, DisP_ind = Distal_Phalanxh3.ver_col_ind()
 
+## フレーム用カラー
+Meta_Frame_col = Metacarpal3.color(Meta_ver, _r=1, _g=1, _b=0)
+ProP_Frame_col = Metacarpal3.color(ProP_ver, _r=1, _g=1, _b=0)
+MidP_Frame_col = Metacarpal3.color(MidP_ver, _r=1, _g=1, _b=0)
+DisP_Frame_col = Metacarpal3.color(DisP_ver, _r=1, _g=1, _b=0)
+
 Meta_max_index = np.argmax(np.array(Metacarpal3.all_mesh_particle)[:,1])
 Meta_max_cood = Metacarpal3.all_mesh_particle[Meta_max_index]
 print("Metacarpal3 max coordinates : ", Meta_max_cood)
 
+ProP_max_index = np.argmax(np.array(Proximal_Phalanx3.all_mesh_particle)[:,1])
+ProP_max_cood = Metacarpal3.all_mesh_particle[ProP_max_index]
+print("Proximal_Phalanx3 max coordinates : ", ProP_max_cood)
+
+MidP_max_index = np.argmax(np.array(Middle_Phalanxh3.all_mesh_particle)[:,1])
+MidP_max_cood = Metacarpal3.all_mesh_particle[MidP_max_index]
+print("Metacarpal3 max coordinates : ", MidP_max_cood)
+
+def gaussian_function(sigma, mu, x, A=1.25):
+    return A*(1/sqrt(2*pi*sigma) * exp(-1/(2*sigma*sigma)*(x-mu)**2))
+
+def super_gaussian_function(sigma, mu, lmd, x, A=1.25):
+    return A*exp(-(1/2*sigma*sigma*(x-mu)**2)**lmd)
+
 Meta_angle, ProP_angle, MidP_angle, DisP_angle = 0., 0., 0., 0.
+Meta, PrxPh, MddPh, DisPh = False, False, False, False
 class QTGLWidget2(QGLWidget):
     Meta_buff=np.array([None])
     ProP_buff=np.array([None])
     MidP_buff=np.array([None])
     DisP_buff=np.array([None])
+
+    outMeta_buff=np.array([None])
+    outProP_buff=np.array([None])
+    outMidP_buff=np.array([None])
+    outDisP_buff=np.array([None])
     #Meta_angle, ProP_angle, MidP_angle, DisP_angle = 0., 0., 0., 0.
     def __init__(self, parent):
         QGLWidget.__init__(self, parent)
@@ -86,7 +114,8 @@ class QTGLWidget2(QGLWidget):
         elif typ=="DisP":DisP_angle=val
 
     def box_listener(self, bool_list):
-        self.Meta, self.PrxPh, self.MddPh, self.DisPh = bool_list
+        global Meta, PrxPh, MddPh, DisPh
+        Meta, PrxPh, MddPh, DisPh = bool_list
 
     def key_listener(self, event):
         key = event.key()
@@ -150,52 +179,47 @@ class QTGLWidget2(QGLWidget):
         glVertex3fv(self.org)
         glEnd()
 
-        glColor3f(0, 1, 0)
-        glPointSize(30)
-        glBegin(GL_POINTS)
-        glVertex3fv(Meta_max_cood)
-        glEnd()
-
         drawText_3D("X", 3., 0., 0.)
         drawText_3D("Y", 0., 3., 0.)
         drawText_3D("Z", 0., 0., 3.)
         drawAxis()
 
-        if not self.Meta:
-            global Meta_buff
-            glPolygonMode(GL_FRONT, GL_LINE)
-            glPolygonMode(GL_BACK, GL_LINE)
+        if not Meta:
+            global Meta_buff, outMeta_buff
             if self.Meta_buff.all()==None:
-                Meta_buff = create_vbo(self.Meta_buff, Meta_ver, Meta_col, Meta_ind)
-            draw_vbo(Meta_buff, Meta_ind)
+                Meta_buff    = create_vbo(self.Meta_buff, Meta_ver, Meta_col, Meta_ind)
+                outMeta_buff = create_vbo(self.outMeta_buff, Meta_ver, Meta_Frame_col, Meta_ind)
+            #glPolygonMode(GL_FRONT, GL_FILL)
+            draw_vbo(outMeta_buff, Meta_ind)
+            draw_vbo(Meta_buff, Meta_ind, mode_front=GL_FILL)
 
-            glTranslatef(0, -Meta_max_cood[1], 0)
-            glRotatef(Meta_angle, 1, 0, 0)
-            #glTranslatef(0, Meta_max_cood[1], 0)
-            #glTranslatef(Meta_max_cood[0], Meta_max_cood[1], Meta_max_cood[2])
+            #glPolygonMode(GL_FRONT, GL_LINE)
+            #glPolygonMode(GL_BACK, GL_LINE)
 
-        if not self.PrxPh:
+        if not PrxPh:
             global ProP_buff
-            glPolygonMode(GL_FRONT, GL_LINE)
-            glPolygonMode(GL_BACK, GL_LINE)
+            glTranslatef(0, (Meta_max_cood[1]-0.2)-Meta_angle*0.01, Meta_angle*0.002)
             if self.ProP_buff.all()==None:
                 ProP_buff = create_vbo(self.ProP_buff, ProP_ver, ProP_col, ProP_ind)
+            glRotatef(Meta_angle, 1, 0, 0)
             draw_vbo(ProP_buff, ProP_ind)
 
-        if not self.MddPh:
+        if not MddPh:
             global MidP_buff
-            glPolygonMode(GL_FRONT, GL_LINE)
-            glPolygonMode(GL_BACK, GL_LINE)
+            mddp_vias = gaussian_function(sigma=20, mu=60, x=ProP_angle, A=1.7)
+            glTranslatef(0, (ProP_max_cood[1]+1.8)-ProP_angle*0.008, -ProP_angle*0.001+mddp_vias)
             if self.MidP_buff.all()==None:
                 MidP_buff = create_vbo(self.MidP_buff, MidP_ver, MidP_col, MidP_ind)
+            glRotatef(ProP_angle+3, 1, 0, 0)
             draw_vbo(MidP_buff, MidP_ind)
 
-        if not self.DisPh:
+        if not DisPh:
             global DisP_buff
-            glPolygonMode(GL_FRONT, GL_LINE)
-            glPolygonMode(GL_BACK, GL_LINE)
+            disp_vias = gaussian_function(sigma=25, mu=70, x=MidP_angle, A=1.9)
+            glTranslatef(0, (MidP_max_cood[1]-0.95)-MidP_angle*0.009, -MidP_angle*0.005+disp_vias)
             if self.DisP_buff.all()==None:
                 DisP_buff = create_vbo(self.DisP_buff, DisP_ver, DisP_col, DisP_ind)
+            glRotatef(MidP_angle+3, 1, 0, 0)
             draw_vbo(DisP_buff, DisP_ind)
 
         ## 座標の表示    -self.camera_cood[0][0], -self.camera_cood[1][0], -self.camera_cood[2][0]
@@ -255,30 +279,24 @@ class Joint_Slider(QWidget):
         MidP_slider = QSlider(Qt.Horizontal)
         DisP_slider = QSlider(Qt.Horizontal)
 
-        Meta_slider.setMinimum(0)
+        Meta_slider.setMinimum(-10)
         Meta_slider.setMaximum(90)
         Meta_slider.valueChanged.connect(lambda val: self.gl.joint_listener("Meta", val))
 
-        ProP_slider.setMinimum(0)
+        ProP_slider.setMinimum(-10)
         ProP_slider.setMaximum(90)
         ProP_slider.valueChanged.connect(lambda val: self.gl.joint_listener("ProP",val))
 
-        MidP_slider.setMinimum(0)
+        MidP_slider.setMinimum(-10)
         MidP_slider.setMaximum(90)
         MidP_slider.valueChanged.connect(lambda val: self.gl.joint_listener("MidP",val))
-
-        DisP_slider.setMinimum(0)
-        DisP_slider.setMaximum(90)
-        DisP_slider.valueChanged.connect(lambda val: self.gl.joint_listener("DisP",val))
 
         layout = QVBoxLayout()
         layout.addWidget(Meta_slider)
         layout.addWidget(ProP_slider)
         layout.addWidget(MidP_slider)
-        layout.addWidget(DisP_slider)
 
         self.setLayout(layout)
-
 
 class Bone_CheckBox(QWidget):
     def __init__(self, parent=None):
