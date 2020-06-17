@@ -118,7 +118,10 @@ def create_vbo(buffers, vertices, colors, indices):
                  GL_STATIC_DRAW)
     return buffers
 
-def draw_vbo(buffers, indices):
+def draw_vbo(buffers, indices, mode_front=GL_LINE, mode_back=GL_LINE):
+    glPolygonMode(GL_FRONT, mode_front)
+    glPolygonMode(GL_BACK,  mode_back)
+
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
     glBindBuffer(GL_ARRAY_BUFFER, buffers[0]);
