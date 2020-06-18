@@ -19,7 +19,7 @@ import ctypes
 import numpy as np
 from math import sqrt, pi, exp
 
-window_title = "Cloth SIM@PyQt5 v.0.3"
+window_title = "Cloth SIM@PyQt5 v.0.5"
 screen_size = [600, 500]
 
 to_models = "/Users/ryotaro/py_projects/pygame_sim/model"
@@ -64,6 +64,8 @@ MidP_max_index = np.argmax(np.array(Middle_Phalanxh3.all_mesh_particle)[:,1])
 MidP_max_cood = Metacarpal3.all_mesh_particle[MidP_max_index]
 print("Metacarpal3 max coordinates : ", MidP_max_cood)
 
+#sys.exit()
+
 def gaussian_function(sigma, mu, x, A=1.25):
     return A*(1/sqrt(2*pi*sigma) * exp(-1/(2*sigma*sigma)*(x-mu)**2))
 
@@ -72,6 +74,7 @@ def super_gaussian_function(sigma, mu, lmd, x, A=1.25):
 
 Meta_angle, ProP_angle, MidP_angle, DisP_angle = 0., 0., 0., 0.
 Meta, PrxPh, MddPh, DisPh = False, False, False, False
+
 class QTGLWidget2(QGLWidget):
     Meta_buff=np.array([None])
     ProP_buff=np.array([None])
@@ -82,7 +85,6 @@ class QTGLWidget2(QGLWidget):
     outProP_buff=np.array([None])
     outMidP_buff=np.array([None])
     outDisP_buff=np.array([None])
-    #Meta_angle, ProP_angle, MidP_angle, DisP_angle = 0., 0., 0., 0.
     def __init__(self, parent):
         QGLWidget.__init__(self, parent)
         self.setMinimumSize(*screen_size)
@@ -183,50 +185,54 @@ class QTGLWidget2(QGLWidget):
         drawText_3D("Y", 0., 3., 0.)
         drawText_3D("Z", 0., 0., 3.)
         drawAxis()
-
+        ##############################  DRAW BONES  ##############################
+        ## 中手骨の描画
         if not Meta:
             global Meta_buff, outMeta_buff
             if self.Meta_buff.all()==None:
                 Meta_buff    = create_vbo(self.Meta_buff, Meta_ver, Meta_col, Meta_ind)
                 outMeta_buff = create_vbo(self.outMeta_buff, Meta_ver, Meta_Frame_col, Meta_ind)
-
             draw_vbo(Meta_buff, Meta_ind)
             draw_vbo(outMeta_buff, Meta_ind, mode_front=GL_LINE)
 
+        ## 基節骨の描画
+        glTranslatef(0, (Meta_max_cood[1]-0.2)-Meta_angle*0.01, Meta_angle*0.002)
         if not PrxPh:
             global ProP_buff, outProP_buff
-            glTranslatef(0, (Meta_max_cood[1]-0.2)-Meta_angle*0.01, Meta_angle*0.002)
             if self.ProP_buff.all()==None:
                 ProP_buff    = create_vbo(self.ProP_buff, ProP_ver, ProP_col, ProP_ind)
                 outProP_buff = create_vbo(self.outProP_buff, ProP_ver, ProP_Frame_col, ProP_ind)
-
             glRotatef(Meta_angle, 1, 0, 0)
             draw_vbo(ProP_buff, ProP_ind)
             draw_vbo(outProP_buff, ProP_ind, mode_front=GL_LINE)
 
+        ## 中節骨の描画
+        mddp_vias = gaussian_function(sigma=20, mu=60, x=ProP_angle, A=1.7)
+        glTranslatef(0, (1.462+1.8)-ProP_angle*0.008, -ProP_angle*0.001+mddp_vias)
         if not MddPh:
             global MidP_buff, outMidP_buff
-            mddp_vias = gaussian_function(sigma=20, mu=60, x=ProP_angle, A=1.7)
-            glTranslatef(0, (ProP_max_cood[1]+1.8)-ProP_angle*0.008, -ProP_angle*0.001+mddp_vias)
+            #glTranslatef(0, (ProP_max_cood[1]+1.8)-ProP_angle*0.008, -ProP_angle*0.001+mddp_vias)
             if self.MidP_buff.all()==None:
                 MidP_buff    = create_vbo(self.MidP_buff, MidP_ver, MidP_col, MidP_ind)
                 outMidP_buff = create_vbo(self.outMidP_buff, MidP_ver, MidP_Frame_col, MidP_ind)
-
             glRotatef(ProP_angle+3, 1, 0, 0)
             draw_vbo(MidP_buff, MidP_ind)
             draw_vbo(outMidP_buff, MidP_ind, mode_front=GL_LINE)
 
+        ## 末節骨の描画
+        disp_vias = gaussian_function(sigma=25, mu=70, x=MidP_angle, A=1.9)
+        glTranslatef(0, (2.906-0.95)-MidP_angle*0.009, -MidP_angle*0.005+disp_vias)
         if not DisPh:
             global DisP_buff, outDisP_buff
-            disp_vias = gaussian_function(sigma=25, mu=70, x=MidP_angle, A=1.9)
-            glTranslatef(0, (MidP_max_cood[1]-0.95)-MidP_angle*0.009, -MidP_angle*0.005+disp_vias)
+            #glTranslatef(0, (MidP_max_cood[1]-0.95)-MidP_angle*0.009, -MidP_angle*0.005+disp_vias)
             if self.DisP_buff.all()==None:
                 DisP_buff    = create_vbo(self.DisP_buff, DisP_ver, DisP_col, DisP_ind)
                 outDisP_buff = create_vbo(self.outDisP_buff, DisP_ver, DisP_Frame_col, DisP_ind)
-
             glRotatef(MidP_angle+3, 1, 0, 0)
             draw_vbo(DisP_buff, DisP_ind)
             draw_vbo(outDisP_buff, DisP_ind, mode_front=GL_LINE)
+
+        ##########################################################################
 
         ## 座標の表示    -self.camera_cood[0][0], -self.camera_cood[1][0], -self.camera_cood[2][0]
         drawText("Camera Pos : "+str(round(camera_pos[0], 2))+", "\
@@ -310,28 +316,28 @@ class Bone_CheckBox(QWidget):
         self.bool_list = [True, True, True, True]
         self.listCheckBox = names_list
         self.listLabel = []
+        self.layout = QGridLayout()
         for label in range(len(self.listCheckBox)):
             self.listLabel.append("")
         self.gl = QTGLWidget2(self)
         self.initUI()
 
     def initUI(self):
-        layout = QGridLayout()
+
         for i, v in enumerate(self.listCheckBox):
             self.listCheckBox[i] = QCheckBox(v)
             self.listLabel[i] = QLabel()
-            layout.addWidget(self.listCheckBox[i], i+10, 0)
-            layout.addWidget(self.listLabel[i],    i+10, 1)
+            self.layout.addWidget(self.listCheckBox[i], i+10, 0)
+            self.layout.addWidget(self.listLabel[i],    i+10, 1)
 
         sc_button = QPushButton("Show / Clear")
         sc_button.clicked.connect(self.check_checkbox)
-        layout.addWidget(sc_button, 20, 0)
+        self.layout.addWidget(sc_button, 20, 0)
 
-        rst_button = QPushButton("RESER CAMERA VIEW")
-        rst_button.clicked.connect(self.gl.cameraRESET)
-        layout.addWidget(rst_button, 30, 0)
-
-        self.setLayout(layout)
+        #rst_button = QPushButton("RESER CAMERA VIEW")
+        #rst_button.clicked.connect(self.gl.cameraRESET)
+        #layout.addWidget(rst_button, 30, 0)
+        self.setLayout(self.layout)
 
     def check_checkbox(self):
         for i, v in enumerate(self.listCheckBox):
@@ -366,6 +372,10 @@ class QTWidget(QWidget):
         tab = QTabWidget()
         tab.addTab(widget1, "Joint slider")
         tab.addTab(widget2, "Check Box (Bone)")
+
+        rst_button = QPushButton("RESER CAMERA VIEW")
+        rst_button.clicked.connect(self.gl.cameraRESET)
+        widget2.layout.addWidget(rst_button, 30, 0)
 
         gui_layout.addWidget(tab)
 
