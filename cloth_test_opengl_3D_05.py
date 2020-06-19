@@ -17,15 +17,68 @@ from stl_load_class import STL_loader
 from drawer_class import drawPolygon, drawText, drawText_3D, drawAxis, create_vbo, draw_vbo
 import ctypes
 import numpy as np
+import dxfgrabber
 from math import sqrt, pi, exp
 
 window_title = "Cloth SIM@PyQt5 v.0.5"
 screen_size = [600, 500]
 
-#######  LOAD 3D MODEL  #######
+##################### DXF ANALYSATION #####################
+#file_name="model/extensor_hood_test001.dxf"
+file_name="model/extensor_hood_test002.dxf"
+dxf = dxfgrabber.readfile(file_name)
+
+for i, layer in enumerate(dxf.layers):
+    print("Layer {0} : {1}".format(i, layer.name))
+
+all_stop_points_en      = [e for e in dxf.entities if e.layer == 'stop_points']     ##  only CIRCLE
+all_polly_lines_en      = [e for e in dxf.entities if e.layer == 'polly_lines']     ##  only LWPOLYLINE
+all_particle_points_en  = [e for e in dxf.entities if e.layer == 'particle_points'] ##  only CIRCLE
+
+extensor_reduced_scale = 1/18
+inversion = -1
+x_vias = 70#-100
+y_vias = 740#880
+
+## 固定パーティクルの座標が格納
+stop_points = []
+for circle in all_stop_points_en:
+    x = int(round(circle.center[0] * extensor_reduced_scale + x_vias, 1))
+    y = int(round(circle.center[1] * extensor_reduced_scale * inversion + y_vias, 1))
+    stop_points.append([x, y])
+
+## ポリラインの頂点座標が格納
+poly_lines = []
+for lw_polyline in all_polly_lines_en:
+    lump = []
+    for cood in lw_polyline.points:
+        x = int(round(cood[0] * extensor_reduced_scale + x_vias, 1))
+        y = int(round(cood[1] * extensor_reduced_scale * inversion + y_vias, 1))
+        lump.append([x, y])
+    poly_lines.append(lump)
+
+## パーティクルの座標が格納
+particle_points = []
+for circle in all_particle_points_en:
+    x = int(round(circle.center[0] * extensor_reduced_scale + x_vias, 1))
+    y = int(round(circle.center[1] * extensor_reduced_scale * inversion + y_vias, 1))
+    particle_points.append([x, y])
+
+def get_unique_list(seq):
+    seen = []
+    return [x for x in seq if x not in seen and not seen.append(x)]
+
+## パーティクルの重複座標を消去
+print("Clearing duplicate particles : ", len(particle_points), "-->",
+                                         len(get_unique_list(particle_points)))
+particle_points = get_unique_list(particle_points)
+
+print(poly_lines)
+#sys.exit()
+
+#####################  LOAD 3D MODEL  #####################
 to_models = "/Users/ryotaro/py_projects/pygame_sim/model"
 finger = "/Index"
-
 names_list = ["/Metacarpal3_01.stl",
               "/Proximal_Phalanx3_01_org.stl",
               "/Middle_Phalanxh3_01_org.stl",
@@ -35,11 +88,11 @@ file_name = [to_models+finger+names_list[0],
              to_models+finger+names_list[1],
              to_models+finger+names_list[2],
              to_models+finger+names_list[3]]
-size = 1/15
-Metacarpal3       = STL_loader(file_name[0], size)
-Proximal_Phalanx3 = STL_loader(file_name[1], size)
-Middle_Phalanxh3  = STL_loader(file_name[2], size)
-Distal_Phalanxh3  = STL_loader(file_name[3], size)
+bone_reduced_scale = 1/15
+Metacarpal3       = STL_loader(file_name[0], bone_reduced_scale)
+Proximal_Phalanx3 = STL_loader(file_name[1], bone_reduced_scale)
+Middle_Phalanxh3  = STL_loader(file_name[2], bone_reduced_scale)
+Distal_Phalanxh3  = STL_loader(file_name[3], bone_reduced_scale)
 
 ## 頂点座標, カラー, 構成インデックス
 Meta_ver, Meta_col, Meta_ind = Metacarpal3.ver_col_ind()
@@ -55,10 +108,8 @@ DisP_Frame_col = Metacarpal3.color(DisP_ver, _r=0, _g=0, _b=0)
 
 Meta_max_index = np.argmax(np.array(Metacarpal3.all_mesh_particle)[:,1])
 Meta_max_cood = Metacarpal3.all_mesh_particle[Meta_max_index]
-
 ProP_max_index = np.argmax(np.array(Proximal_Phalanx3.all_mesh_particle)[:,1])
 ProP_max_cood = Metacarpal3.all_mesh_particle[ProP_max_index]
-
 MidP_max_index = np.argmax(np.array(Middle_Phalanxh3.all_mesh_particle)[:,1])
 MidP_max_cood = Metacarpal3.all_mesh_particle[MidP_max_index]
 
@@ -71,7 +122,7 @@ def super_gaussian_function(sigma, mu, lmd, x, A=1.25):
 Meta_angle, Meta_AbdAdd_angle, ProP_angle, MidP_angle, DisP_angle = 0., 0., 0., 0., 0.
 Meta, PrxPh, MddPh, DisPh = False, False, False, False
 
-class QTGLWidget2(QGLWidget):
+class BoneWidget(QGLWidget):
     Meta_buff=np.array([None])
     ProP_buff=np.array([None])
     MidP_buff=np.array([None])
@@ -213,7 +264,6 @@ class QTGLWidget2(QGLWidget):
         glTranslatef(0, (1.462+1.8)-ProP_angle*0.008, -ProP_angle*0.001+mddp_vias)
         if not MddPh:
             global MidP_buff, outMidP_buff
-            #glTranslatef(0, (ProP_max_cood[1]+1.8)-ProP_angle*0.008, -ProP_angle*0.001+mddp_vias)
             if self.MidP_buff.all()==None:
                 MidP_buff    = create_vbo(self.MidP_buff, MidP_ver, MidP_col, MidP_ind)
                 outMidP_buff = create_vbo(self.outMidP_buff, MidP_ver, MidP_Frame_col, MidP_ind)
@@ -228,7 +278,6 @@ class QTGLWidget2(QGLWidget):
         glTranslatef(0, (2.906-0.95)-MidP_angle*0.009, -MidP_angle*0.005+disp_vias)
         if not DisPh:
             global DisP_buff, outDisP_buff
-            #glTranslatef(0, (MidP_max_cood[1]-0.95)-MidP_angle*0.009, -MidP_angle*0.005+disp_vias)
             if self.DisP_buff.all()==None:
                 DisP_buff    = create_vbo(self.DisP_buff, DisP_ver, DisP_col, DisP_ind)
                 outDisP_buff = create_vbo(self.outDisP_buff, DisP_ver, DisP_Frame_col, DisP_ind)
@@ -247,10 +296,11 @@ class QTGLWidget2(QGLWidget):
                                 +str(round(self.camera_cood[1][0], 2))+", "\
                                 +str(round(self.camera_cood[2][0], 2)), 2, 2,  *screen_size)
         ## 関節角度の表示
-        drawText("Meta Angle : "  + str(float(Meta_angle)), 2, screen_size[1]-10, *screen_size)
-        drawText("ProP Angle : "  + str(float(ProP_angle)), 2, screen_size[1]-20, *screen_size)
-        drawText("MidP Angle : "  + str(float(MidP_angle)), 2, screen_size[1]-30, *screen_size)
-        drawText("DisP Angle  : " + str(float(DisP_angle)), 2, screen_size[1]-40, *screen_size)
+        drawText("Meta Angle : " +str(float(Meta_angle))+"°"+"   |   "
+                +"Meta Abd & Add Angle : "+str(float(Meta_AbdAdd_angle))+"°",2, screen_size[1]-10, *screen_size)
+        drawText("ProP Angle : " +str(float(ProP_angle))+"°", 2, screen_size[1]-20, *screen_size)
+        drawText("MidP Angle : " +str(float(MidP_angle))+"°", 2, screen_size[1]-30, *screen_size)
+        drawText("DisP Angle  : "+str(float(DisP_angle))+"°", 2, screen_size[1]-40, *screen_size)
 
         glFlush()
 
@@ -275,7 +325,7 @@ class QTGLWidget2(QGLWidget):
 class Joint_Slider(QWidget):
     def __init__(self, parent=None):
         QWidget.__init__(self)
-        self.gl = QTGLWidget2(self)
+        self.gl = BoneWidget(self)
         self.Meta_lab = QLabel("0")
         self.ProP_lab = QLabel("0")
         self.MidP_lab = QLabel("0")
@@ -347,7 +397,7 @@ class Bone_CheckBox(QWidget):
         self.layout = QGridLayout()
         for label in range(len(self.listCheckBox)):
             self.listLabel.append("")
-        self.gl = QTGLWidget2(self)
+        self.gl = BoneWidget(self)
         self.initUI()
 
     def initUI(self):
@@ -380,7 +430,7 @@ class QTWidget(QWidget):
         QWidget.__init__(self)
         self.clicked_points = [0, 0]
 
-        self.gl = QTGLWidget2(self)
+        self.gl = BoneWidget(self)
 
         self.initUI()
 
