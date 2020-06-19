@@ -22,6 +22,7 @@ from math import sqrt, pi, exp
 window_title = "Cloth SIM@PyQt5 v.0.5"
 screen_size = [600, 500]
 
+#######  LOAD 3D MODEL  #######
 to_models = "/Users/ryotaro/py_projects/pygame_sim/model"
 finger = "/Index"
 
@@ -54,17 +55,12 @@ DisP_Frame_col = Metacarpal3.color(DisP_ver, _r=0, _g=0, _b=0)
 
 Meta_max_index = np.argmax(np.array(Metacarpal3.all_mesh_particle)[:,1])
 Meta_max_cood = Metacarpal3.all_mesh_particle[Meta_max_index]
-print("Metacarpal3 max coordinates : ", Meta_max_cood)
 
 ProP_max_index = np.argmax(np.array(Proximal_Phalanx3.all_mesh_particle)[:,1])
 ProP_max_cood = Metacarpal3.all_mesh_particle[ProP_max_index]
-print("Proximal_Phalanx3 max coordinates : ", ProP_max_cood)
 
 MidP_max_index = np.argmax(np.array(Middle_Phalanxh3.all_mesh_particle)[:,1])
 MidP_max_cood = Metacarpal3.all_mesh_particle[MidP_max_index]
-print("Metacarpal3 max coordinates : ", MidP_max_cood)
-
-#sys.exit()
 
 def gaussian_function(sigma, mu, x, A=1.25):
     return A*(1/sqrt(2*pi*sigma) * exp(-1/(2*sigma*sigma)*(x-mu)**2))
@@ -72,7 +68,7 @@ def gaussian_function(sigma, mu, x, A=1.25):
 def super_gaussian_function(sigma, mu, lmd, x, A=1.25):
     return A*exp(-(1/2*sigma*sigma*(x-mu)**2)**lmd)
 
-Meta_angle, ProP_angle, MidP_angle, DisP_angle = 0., 0., 0., 0.
+Meta_angle, Meta_AbdAdd_angle, ProP_angle, MidP_angle, DisP_angle = 0., 0., 0., 0., 0.
 Meta, PrxPh, MddPh, DisPh = False, False, False, False
 
 class QTGLWidget2(QGLWidget):
@@ -109,8 +105,9 @@ class QTGLWidget2(QGLWidget):
         #self.Meta_angle, self.ProP_angle, self.MidP_angle, self.DisP_angle = 0., 0., 0., 0.
 
     def joint_listener(self, typ, val):
-        global Meta_angle, ProP_angle, MidP_angle, DisP_angle
+        global Meta_angle, Meta_AbdAdd_angle, ProP_angle, MidP_angle, DisP_angle
         if   typ=="Meta":Meta_angle=val
+        elif typ=="Meta_AbdAdd":Meta_AbdAdd_angle=val
         elif typ=="ProP":ProP_angle=val
         elif typ=="MidP":MidP_angle=val
         elif typ=="DisP":DisP_angle=val
@@ -196,15 +193,20 @@ class QTGLWidget2(QGLWidget):
             draw_vbo(outMeta_buff, Meta_ind, mode_front=GL_LINE)
 
         ## 基節骨の描画
-        glTranslatef(0, (Meta_max_cood[1]-0.2)-Meta_angle*0.01, Meta_angle*0.002)
+        glTranslatef(2.4, (Meta_max_cood[1]-0.2)-Meta_angle*0.01, Meta_angle*0.002)
         if not PrxPh:
             global ProP_buff, outProP_buff
             if self.ProP_buff.all()==None:
                 ProP_buff    = create_vbo(self.ProP_buff, ProP_ver, ProP_col, ProP_ind)
                 outProP_buff = create_vbo(self.outProP_buff, ProP_ver, ProP_Frame_col, ProP_ind)
             glRotatef(Meta_angle, 1, 0, 0)
+            glTranslatef(-1.2,0,0)
+            glRotated(Meta_AbdAdd_angle, 0, 0, 1)
+            glTranslatef(-1.2-Meta_AbdAdd_angle*0.003,0,0)
             draw_vbo(ProP_buff, ProP_ind)
             draw_vbo(outProP_buff, ProP_ind, mode_front=GL_LINE)
+        else:
+            glTranslatef(-2.4, -((Meta_max_cood[1]-0.2)-Meta_angle*0.01), -Meta_angle*0.002)
 
         ## 中節骨の描画
         mddp_vias = gaussian_function(sigma=20, mu=60, x=ProP_angle, A=1.7)
@@ -218,6 +220,8 @@ class QTGLWidget2(QGLWidget):
             glRotatef(ProP_angle+3, 1, 0, 0)
             draw_vbo(MidP_buff, MidP_ind)
             draw_vbo(outMidP_buff, MidP_ind, mode_front=GL_LINE)
+        else:
+            glTranslatef(0, -((1.462+1.8)-ProP_angle*0.008), -(-ProP_angle*0.001+mddp_vias))
 
         ## 末節骨の描画
         disp_vias = gaussian_function(sigma=25, mu=70, x=MidP_angle, A=1.9)
@@ -285,28 +289,52 @@ class Joint_Slider(QWidget):
         self.initUI()
 
     def initUI(self):
+        layout   = QVBoxLayout()
+        splitter1 = QSplitter(Qt.Vertical)
+        splitter2 = QSplitter(Qt.Vertical)
+        splitter3 = QSplitter(Qt.Vertical)
         ## Meta,ProP,MidP,DisP
         Meta_slider = QSlider(Qt.Horizontal)
+        Meta_AbdAdd_slider = QSlider(Qt.Horizontal)
         ProP_slider = QSlider(Qt.Horizontal)
         MidP_slider = QSlider(Qt.Horizontal)
         DisP_slider = QSlider(Qt.Horizontal)
 
+        label_Meta = QLabel("Angle of the Meta (Flexion / extension)　/ (abduction / adduction)")
+        label_ProP = QLabel("Angle of the ProP (Flexion / extension)")
+        label_MidP = QLabel("Angle of the MidP (Flexion / extension)")
+        ## 屈曲 / 伸展
         Meta_slider.setMinimum(-10)
         Meta_slider.setMaximum(90)
         Meta_slider.valueChanged.connect(lambda val: self.gl.joint_listener("Meta", val))
+        ## 外転 / 内転
+        Meta_AbdAdd_slider.setMinimum(-20)
+        Meta_AbdAdd_slider.setMaximum(20)
+        Meta_AbdAdd_slider.valueChanged.connect(lambda val: self.gl.joint_listener("Meta_AbdAdd",val))
+        splitter1.addWidget(label_Meta)
+        splitter1.addWidget(Meta_slider)
+        splitter1.addWidget(Meta_AbdAdd_slider)
+        splitter1.setFrameShape(QFrame.Panel)
 
+        ## 屈曲 / 伸展
         ProP_slider.setMinimum(-10)
         ProP_slider.setMaximum(90)
         ProP_slider.valueChanged.connect(lambda val: self.gl.joint_listener("ProP",val))
+        splitter2.addWidget(label_ProP)
+        splitter2.addWidget(ProP_slider)
+        splitter2.setFrameShape(QFrame.Panel)
 
+        ## 屈曲 / 伸展
         MidP_slider.setMinimum(-10)
         MidP_slider.setMaximum(90)
         MidP_slider.valueChanged.connect(lambda val: self.gl.joint_listener("MidP",val))
+        splitter3.addWidget(label_MidP)
+        splitter3.addWidget(MidP_slider)
+        splitter3.setFrameShape(QFrame.Panel)
 
-        layout = QVBoxLayout()
-        layout.addWidget(Meta_slider)
-        layout.addWidget(ProP_slider)
-        layout.addWidget(MidP_slider)
+        layout.addWidget(splitter1)
+        layout.addWidget(splitter2)
+        layout.addWidget(splitter3)
 
         self.setLayout(layout)
 
