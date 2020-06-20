@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import sys, os, traceback, time
 from functools import lru_cache
 from math import sin, cos, sqrt, radians
@@ -13,71 +12,22 @@ from PyQt5 import QtCore as Qt
 from PyQt5.QtCore import *
 from PyQt5.QtOpenGL import *
 from stl import mesh
-from stl_load_class import STL_loader
-from drawer_class import drawPolygon, drawText, drawText_3D, drawAxis, create_vbo, draw_vbo
+from dxf_loader import DXF_Loader
+from stl_loader import STL_loader
+from drawer import drawPolygon, drawText, drawText_3D, drawAxis, create_vbo, draw_vbo
 import ctypes
 import numpy as np
-import dxfgrabber
 from math import sqrt, pi, exp
 
 window_title = "Cloth SIM@PyQt5 v.0.5"
 screen_size = [600, 500]
-
+to_models = "/Users/ryotaro/py_projects/pygame_sim/model"
 ##################### DXF ANALYSATION #####################
-#file_name="model/extensor_hood_test001.dxf"
-file_name="model/extensor_hood_test002.dxf"
-dxf = dxfgrabber.readfile(file_name)
-
-for i, layer in enumerate(dxf.layers):
-    print("Layer {0} : {1}".format(i, layer.name))
-
-all_stop_points_en      = [e for e in dxf.entities if e.layer == 'stop_points']     ##  only CIRCLE
-all_polly_lines_en      = [e for e in dxf.entities if e.layer == 'polly_lines']     ##  only LWPOLYLINE
-all_particle_points_en  = [e for e in dxf.entities if e.layer == 'particle_points'] ##  only CIRCLE
-
-extensor_reduced_scale = 1/18
-inversion = -1
-x_vias = 70#-100
-y_vias = 740#880
-
-## 固定パーティクルの座標が格納
-stop_points = []
-for circle in all_stop_points_en:
-    x = int(round(circle.center[0] * extensor_reduced_scale + x_vias, 1))
-    y = int(round(circle.center[1] * extensor_reduced_scale * inversion + y_vias, 1))
-    stop_points.append([x, y])
-
-## ポリラインの頂点座標が格納
-poly_lines = []
-for lw_polyline in all_polly_lines_en:
-    lump = []
-    for cood in lw_polyline.points:
-        x = int(round(cood[0] * extensor_reduced_scale + x_vias, 1))
-        y = int(round(cood[1] * extensor_reduced_scale * inversion + y_vias, 1))
-        lump.append([x, y])
-    poly_lines.append(lump)
-
-## パーティクルの座標が格納
-particle_points = []
-for circle in all_particle_points_en:
-    x = int(round(circle.center[0] * extensor_reduced_scale + x_vias, 1))
-    y = int(round(circle.center[1] * extensor_reduced_scale * inversion + y_vias, 1))
-    particle_points.append([x, y])
-
-def get_unique_list(seq):
-    seen = []
-    return [x for x in seq if x not in seen and not seen.append(x)]
-
-## パーティクルの重複座標を消去
-print("Clearing duplicate particles : ", len(particle_points), "-->",
-                                         len(get_unique_list(particle_points)))
-particle_points = get_unique_list(particle_points)
-
-print(poly_lines)
-#sys.exit()
+extensor = "model/extensor_hood_test002.dxf"
+Extensor = DXF_Loader(extensor, extensor_reduced_scale=1/650, x_vias=-3, y_vias=-7, z_vias=-1.5)
+stop_points_3d, particle_points_3d, poly_lines_3d = Extensor.ver_col_ind()
 
 #####################  LOAD 3D MODEL  #####################
-to_models = "/Users/ryotaro/py_projects/pygame_sim/model"
 finger = "/Index"
 names_list = ["/Metacarpal3_01.stl",
               "/Proximal_Phalanx3_01_org.stl",
@@ -106,6 +56,7 @@ ProP_Frame_col = Metacarpal3.color(ProP_ver, _r=0, _g=0, _b=0)
 MidP_Frame_col = Metacarpal3.color(MidP_ver, _r=0, _g=0, _b=0)
 DisP_Frame_col = Metacarpal3.color(DisP_ver, _r=0, _g=0, _b=0)
 
+""" 各モデルの座標の最大値 """
 Meta_max_index = np.argmax(np.array(Metacarpal3.all_mesh_particle)[:,1])
 Meta_max_cood = Metacarpal3.all_mesh_particle[Meta_max_index]
 ProP_max_index = np.argmax(np.array(Proximal_Phalanx3.all_mesh_particle)[:,1])
@@ -113,16 +64,78 @@ ProP_max_cood = Metacarpal3.all_mesh_particle[ProP_max_index]
 MidP_max_index = np.argmax(np.array(Middle_Phalanxh3.all_mesh_particle)[:,1])
 MidP_max_cood = Metacarpal3.all_mesh_particle[MidP_max_index]
 
+###############################################################
+
 def gaussian_function(sigma, mu, x, A=1.25):
     return A*(1/sqrt(2*pi*sigma) * exp(-1/(2*sigma*sigma)*(x-mu)**2))
 
 def super_gaussian_function(sigma, mu, lmd, x, A=1.25):
     return A*exp(-(1/2*sigma*sigma*(x-mu)**2)**lmd)
 
+def subtract(vec1,vec2):
+    return [vec1[i]-vec2[i] for i in [0,1,2]]
+
+def get_length(vec):
+    return sum([vec[i]*vec[i] for i in [0,1,2]])**0.5
+
+class Particle(object):
+    def __init__(self,pos):
+        self.pos = pos
+        self.last_pos = list(self.pos)
+        self.accel = [0.0,0.0,0.0]
+
+        self.constrained = False
+    def move(self,dt):
+        #Don't move constrained particles
+        if self.constrained: return
+        #Move
+        for i in [0,1,2]:
+            #Verlet
+            temp = 2*self.pos[i] - self.last_pos[i] + self.accel[i]*dt*dt
+            self.last_pos[i] = self.pos[i]
+            self.pos[i] = temp
+
+            if self.pos[i] < 0.0: self.pos[i] = 0.0
+            elif self.pos[i] > 1.0: self.pos[i] = 1.0
+    def draw(self):
+        glVertex3fv(self.pos)
+class Edge(object):
+    def __init__(self, p1,p2, tolerance=0.1):
+        self.p1 = p1
+        self.p2 = p2
+
+        self.tolerance = tolerance
+
+        self.rest_length = get_length(subtract(self.p2.pos,self.p1.pos))
+        self.lower_length = self.rest_length*(1.0-self.tolerance)
+        self.upper_length = self.rest_length*(1.0+self.tolerance)
+    def constrain(self):
+        vec = [self.p2.pos[i]-self.p1.pos[i] for i in [0,1,2]]
+        length = get_length(vec)
+
+        if   length > self.upper_length:
+            target_length = self.upper_length
+            strength = 1.0
+        elif length < self.lower_length:
+            target_length = self.lower_length
+            strength = 1.0
+        elif length > self.rest_length:
+            target_length = self.rest_length
+            strength = (length - self.rest_length) / ( 0.1*self.rest_length)
+        elif length < self.rest_length:
+            target_length = self.rest_length
+            strength = (length - self.rest_length) / (-0.1*self.rest_length)
+        else:
+            return
+        movement_for_each = strength * (length - target_length) / 2.0
+
+        for i in [0,1,2]:
+            if not self.p1.constrained: self.p1.pos[i] += movement_for_each*vec[i]
+            if not self.p2.constrained: self.p2.pos[i] -= movement_for_each*vec[i]
+
 Meta_angle, Meta_AbdAdd_angle, ProP_angle, MidP_angle, DisP_angle = 0., 0., 0., 0., 0.
 Meta, PrxPh, MddPh, DisPh = False, False, False, False
-
-class BoneWidget(QGLWidget):
+class DrawWidget(QGLWidget):
     Meta_buff=np.array([None])
     ProP_buff=np.array([None])
     MidP_buff=np.array([None])
@@ -147,9 +160,7 @@ class BoneWidget(QGLWidget):
         self.org_points = [[tuple((0, 0, 0)), tuple((5, 0, 0))],
                            [tuple((0, 0, 0)), tuple((0, 5, 0))],
                            [tuple((0, 0, 0)), tuple((0, 0, 5))]]
-        self.br = 0.0
-        self.bg = 0.0
-        self.bb = 0.0
+        self.bRGB = [.0, .0, .0]
         self.Meta, self.PrxPh, self.MddPh, self.DisPh = False, False, False, False
         self.keys_list = []
         self.all_camera_status = []
@@ -206,7 +217,7 @@ class BoneWidget(QGLWidget):
             elif event.angleDelta().y() == -120 : self.camera_radius += move_pix
 
     def paintGL(self):
-        glClearColor(self.br, self.bg, self.bb, 0.0)
+        glClearColor(*self.bRGB, 0.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         glLoadIdentity()
@@ -233,7 +244,9 @@ class BoneWidget(QGLWidget):
         drawText_3D("Y", 0., 3., 0.)
         drawText_3D("Z", 0., 0., 3.)
         drawAxis()
+
         ##############################  DRAW BONES  ##############################
+        glPushMatrix();
         ## 中手骨の描画
         if not Meta:
             global Meta_buff, outMeta_buff
@@ -241,7 +254,7 @@ class BoneWidget(QGLWidget):
                 Meta_buff    = create_vbo(self.Meta_buff, Meta_ver, Meta_col, Meta_ind)
                 outMeta_buff = create_vbo(self.outMeta_buff, Meta_ver, Meta_Frame_col, Meta_ind)
             draw_vbo(Meta_buff, Meta_ind)
-            draw_vbo(outMeta_buff, Meta_ind, mode_front=GL_LINE)
+            draw_vbo(outMeta_buff, Meta_ind, mode_front=GL_LINE, mode_back=GL_LINE)
 
         ## 基節骨の描画
         glTranslatef(2.4, (Meta_max_cood[1]-0.2)-Meta_angle*0.01, Meta_angle*0.002)
@@ -256,8 +269,6 @@ class BoneWidget(QGLWidget):
             glTranslatef(-1.2-Meta_AbdAdd_angle*0.003,0,0)
             draw_vbo(ProP_buff, ProP_ind)
             draw_vbo(outProP_buff, ProP_ind, mode_front=GL_LINE)
-        else:
-            glTranslatef(-2.4, -((Meta_max_cood[1]-0.2)-Meta_angle*0.01), -Meta_angle*0.002)
 
         ## 中節骨の描画
         mddp_vias = gaussian_function(sigma=20, mu=60, x=ProP_angle, A=1.7)
@@ -270,8 +281,6 @@ class BoneWidget(QGLWidget):
             glRotatef(ProP_angle+3, 1, 0, 0)
             draw_vbo(MidP_buff, MidP_ind)
             draw_vbo(outMidP_buff, MidP_ind, mode_front=GL_LINE)
-        else:
-            glTranslatef(0, -((1.462+1.8)-ProP_angle*0.008), -(-ProP_angle*0.001+mddp_vias))
 
         ## 末節骨の描画
         disp_vias = gaussian_function(sigma=25, mu=70, x=MidP_angle, A=1.9)
@@ -284,7 +293,7 @@ class BoneWidget(QGLWidget):
             glRotatef(MidP_angle+3, 1, 0, 0)
             draw_vbo(DisP_buff, DisP_ind)
             draw_vbo(outDisP_buff, DisP_ind, mode_front=GL_LINE)
-
+        glPopMatrix();
         ##########################################################################
 
         ## 座標の表示    -self.camera_cood[0][0], -self.camera_cood[1][0], -self.camera_cood[2][0]
@@ -301,6 +310,17 @@ class BoneWidget(QGLWidget):
         drawText("ProP Angle : " +str(float(ProP_angle))+"°", 2, screen_size[1]-20, *screen_size)
         drawText("MidP Angle : " +str(float(MidP_angle))+"°", 2, screen_size[1]-30, *screen_size)
         drawText("DisP Angle  : "+str(float(DisP_angle))+"°", 2, screen_size[1]-40, *screen_size)
+
+        ##########################  DRAW EXTENSOR HOOD  ##########################
+        glPushMatrix();
+        glColor4f(1, 1, 0, 1)
+        glLineWidth(3.0)
+        for line_clump in poly_lines_3d:
+            glBegin(GL_LINE_STRIP)
+            for poly in line_clump:
+                glVertex3fv(poly)
+            glEnd()
+        glPopMatrix();
 
         glFlush()
 
@@ -325,7 +345,7 @@ class BoneWidget(QGLWidget):
 class Joint_Slider(QWidget):
     def __init__(self, parent=None):
         QWidget.__init__(self)
-        self.gl = BoneWidget(self)
+        self.gl = DrawWidget(self)
         self.Meta_lab = QLabel("0")
         self.ProP_lab = QLabel("0")
         self.MidP_lab = QLabel("0")
@@ -397,7 +417,7 @@ class Bone_CheckBox(QWidget):
         self.layout = QGridLayout()
         for label in range(len(self.listCheckBox)):
             self.listLabel.append("")
-        self.gl = BoneWidget(self)
+        self.gl = DrawWidget(self)
         self.initUI()
 
     def initUI(self):
@@ -430,7 +450,7 @@ class QTWidget(QWidget):
         QWidget.__init__(self)
         self.clicked_points = [0, 0]
 
-        self.gl = BoneWidget(self)
+        self.gl = DrawWidget(self)
 
         self.initUI()
 
