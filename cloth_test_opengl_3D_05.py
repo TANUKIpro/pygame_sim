@@ -22,6 +22,7 @@ from math import sqrt, pi, exp
 window_title = "Cloth SIM@PyQt5 v.0.5"
 screen_size = [600, 500]
 to_models = "/Users/ryotaro/py_projects/pygame_sim/model"
+
 ##################### DXF ANALYSATION #####################
 extensor = "model/extensor_hood_test002.dxf"
 Extensor = DXF_Loader(extensor, extensor_reduced_scale=1/650, x_vias=-3, y_vias=-7, z_vias=-1.5)
@@ -83,8 +84,8 @@ class Particle(object):
         self.pos = pos
         self.last_pos = list(self.pos)
         self.accel = [0.0,0.0,0.0]
-
         self.constrained = False
+
     def move(self,dt):
         #Don't move constrained particles
         if self.constrained: return
@@ -97,8 +98,10 @@ class Particle(object):
 
             if self.pos[i] < 0.0: self.pos[i] = 0.0
             elif self.pos[i] > 1.0: self.pos[i] = 1.0
+
     def draw(self):
         glVertex3fv(self.pos)
+
 class Edge(object):
     def __init__(self, p1,p2, tolerance=0.1):
         self.p1 = p1
@@ -109,6 +112,7 @@ class Edge(object):
         self.rest_length = get_length(subtract(self.p2.pos,self.p1.pos))
         self.lower_length = self.rest_length*(1.0-self.tolerance)
         self.upper_length = self.rest_length*(1.0+self.tolerance)
+
     def constrain(self):
         vec = [self.p2.pos[i]-self.p1.pos[i] for i in [0,1,2]]
         length = get_length(vec)
@@ -234,12 +238,6 @@ class DrawWidget(QGLWidget):
         ## 指定軸に対して平行移動
         glTranslatef(-self.camera_cood[0][0], -self.camera_cood[1][0], -self.camera_cood[2][0])
 
-        glColor3f(1, 1, 0)
-        glPointSize(30)
-        glBegin(GL_POINTS)
-        glVertex3fv(self.org)
-        glEnd()
-
         drawText_3D("X", 3., 0., 0.)
         drawText_3D("Y", 0., 3., 0.)
         drawText_3D("Z", 0., 0., 3.)
@@ -313,14 +311,26 @@ class DrawWidget(QGLWidget):
 
         ##########################  DRAW EXTENSOR HOOD  ##########################
         glPushMatrix();
-        glColor4f(1, 1, 0, 1)
-        glLineWidth(3.0)
+        glColor3f(0, 1, 1)
+        glLineWidth(5.0)
         for line_clump in poly_lines_3d:
             glBegin(GL_LINE_STRIP)
             for poly in line_clump:
                 glVertex3fv(poly)
             glEnd()
         glPopMatrix();
+
+        glColor3f(0, 1, 0)
+        glPointSize(20)
+        glBegin(GL_POINTS)
+        glVertex3fv(tuple((1.2, 8, 0)))
+        glEnd()
+
+        glColor3f(1, 1, 0)
+        glPointSize(30)
+        glBegin(GL_POINTS)
+        glVertex3fv(self.org)
+        glEnd()
 
         glFlush()
 
@@ -334,7 +344,7 @@ class DrawWidget(QGLWidget):
     def initializeGL(self):
         glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
 
-        glClearColor(self.br, self.bg, self.bb, 1.0)
+        glClearColor(*self.bRGB, 1.0)
         glClearDepth(1.0)
 
         glMatrixMode(GL_PROJECTION)
@@ -359,7 +369,6 @@ class Joint_Slider(QWidget):
         self.initUI()
 
     def initUI(self):
-        layout   = QVBoxLayout()
         splitter1 = QSplitter(Qt.Vertical)
         splitter2 = QSplitter(Qt.Vertical)
         splitter3 = QSplitter(Qt.Vertical)
@@ -402,10 +411,87 @@ class Joint_Slider(QWidget):
         splitter3.addWidget(MidP_slider)
         splitter3.setFrameShape(QFrame.Panel)
 
+        layout   = QVBoxLayout()
         layout.addWidget(splitter1)
         layout.addWidget(splitter2)
         layout.addWidget(splitter3)
 
+        self.setLayout(layout)
+
+class Coordination_slider(QFrame):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        ## パーティクルの移動
+        slider_x.setMinimum(-20)
+        slider_x.setMaximum(20)
+        slider_x = QSlider(Qt.Horizontal)
+
+        slider_y.setMinimum(-20)
+        slider_y.setMaximum(20)
+        slider_y = QSlider(Qt.Horizontal)
+
+        slider_z.setMinimum(-20)
+        slider_z.setMaximum(20)
+        slider_z = QSlider(Qt.Horizontal)
+
+        label_x = QLabel("Coordination X")
+        label_y = QLabel("Coordination Y")
+        label_z = QLabel("Coordination Z")
+
+        layout = QVBoxLayout()
+
+        layout.addWidget(label_x)
+        layout.addWidget(slider_x)
+        layout.addWidget(label_y)
+        layout.addWidget(slider_y)
+        layout.addWidget(label_z)
+        layout.addWidget(slider_z)
+
+        self.setLayout(layout)
+
+class Particle_cBox(QFrame):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        ## パーティクルの選択
+        cBox_label = QLabel("Select Stop Particle")
+        self.combo = QComboBox(self)
+        self.combo.addItem("Particle1")
+        self.combo.addItem("Particle2")
+
+        button = QPushButton("Check")
+        button.clicked.connect(self.buttonClicked)
+
+        layout = QVBoxLayout()
+        layout.addWidget(cBox_label)
+        layout.addWidget(self.combo)
+        layout.addWidget(button)
+
+        self.setLayout(layout)
+
+    def buttonClicked(self):
+        print(self.combo.currentIndex(), self.combo.currentText())
+
+class AnchorPoint_Slider(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.gl = DrawWidget(self)
+
+        self.initUI()
+
+    def initUI(self):
+        frame1 = Particle_cBox(self)
+        frame1.setFrameShape(QFrame.Panel)
+
+        frame2 = Coordination_slider(self)
+        frame2.setFrameShape(QFrame.Panel)
+
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.addWidget(frame1)
+        splitter.addWidget(frame2)
+        splitter.setHandleWidth(10)
+
+        layout = QHBoxLayout()
+        layout.addWidget(splitter)
         self.setLayout(layout)
 
 class Bone_CheckBox(QWidget):
@@ -449,9 +535,7 @@ class QTWidget(QWidget):
     def __init__(self):
         QWidget.__init__(self)
         self.clicked_points = [0, 0]
-
         self.gl = DrawWidget(self)
-
         self.initUI()
 
         timer = QTimer(self)
@@ -466,17 +550,18 @@ class QTWidget(QWidget):
 
         widget1 = Joint_Slider(self)
         widget2 = Bone_CheckBox(self)
+        widget3 = AnchorPoint_Slider(self)
 
         tab = QTabWidget()
         tab.addTab(widget1, "Joint slider")
         tab.addTab(widget2, "Check Box (Bone)")
+        tab.addTab(widget3, "Stop Particle slider")
 
         rst_button = QPushButton("RESER CAMERA VIEW")
         rst_button.clicked.connect(self.gl.cameraRESET)
         widget2.layout.addWidget(rst_button, 30, 0)
 
         gui_layout.addWidget(tab)
-
         self.setLayout(gui_layout)
 
     def keyPressEvent(self, event):

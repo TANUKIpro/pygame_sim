@@ -126,7 +126,7 @@ def draw_vbo(buffers, indices, mode_front=GL_FILL, mode_back=GL_FILL):
 
     glPolygonMode(GL_FRONT, mode_front)
     glPolygonMode(GL_BACK,  mode_back)
-    glLineWidth(1.0)
+    glLineWidth(1.5)
 
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
