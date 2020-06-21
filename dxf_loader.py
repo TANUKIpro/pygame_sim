@@ -12,6 +12,7 @@ class DXF_Loader:
         self.y_vias = y_vias#880
         self.z_vias = z_vias
         self.inversion = inversion  ## 反転操作(-1or1)
+        self.round_quality = 2
 
         self.stop_points = []      ## 固定パーティクルの座標が格納
         self.poly_lines = []       ## ポリラインの頂点座標が格納
@@ -33,8 +34,8 @@ class DXF_Loader:
         for circle in all_stop_points_en:
             #x = int(round(circle.center[0] * self.extensor_reduced_scale + self.x_vias, 1))
             #y = int(round(circle.center[1] * self.extensor_reduced_scale * self.inversion + self.y_vias, 1))
-            x = round(circle.center[0] * self.extensor_reduced_scale + self.x_vias, 5)
-            y = round(circle.center[1] * self.extensor_reduced_scale * self.inversion + self.y_vias, 5)
+            x = round(circle.center[0] * self.extensor_reduced_scale + self.x_vias, self.round_quality)
+            y = round(circle.center[1] * self.extensor_reduced_scale * self.inversion + self.y_vias, self.round_quality)
             self.stop_points.append([x, y])
 
         for lw_polyline in all_polly_lines_en:
@@ -42,16 +43,16 @@ class DXF_Loader:
             for cood in lw_polyline.points:
                 #x = int(round(cood[0] * self.extensor_reduced_scale + self.x_vias, 1))
                 #y = int(round(cood[1] * self.extensor_reduced_scale * self.inversion + self.y_vias, 1))
-                x = round(cood[0] * self.extensor_reduced_scale + self.x_vias, 5)
-                y = round(cood[1] * self.extensor_reduced_scale * self.inversion + self.y_vias, 5)
+                x = round(cood[0] * self.extensor_reduced_scale + self.x_vias, self.round_quality)
+                y = round(cood[1] * self.extensor_reduced_scale * self.inversion + self.y_vias, self.round_quality)
                 lump.append([x, y])
             self.poly_lines.append(lump)
 
         for circle in all_particle_points_en:
             #x = int(round(circle.center[0] * self.extensor_reduced_scale + self.x_vias, 1))
             #y = int(round(circle.center[1] * self.extensor_reduced_scale * self.inversion + self.y_vias, 1))
-            x = round(circle.center[0] * self.extensor_reduced_scale + self.x_vias, 5)
-            y = round(circle.center[1] * self.extensor_reduced_scale * self.inversion + self.y_vias, 5)
+            x = round(circle.center[0] * self.extensor_reduced_scale + self.x_vias, self.round_quality)
+            y = round(circle.center[1] * self.extensor_reduced_scale * self.inversion + self.y_vias, self.round_quality)
             self.particle_points.append([x, y])
 
         print("Clearing duplicate particles : ", len(self.particle_points), "-->",
