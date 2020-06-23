@@ -25,9 +25,10 @@ to_models = "/Users/ryotaro/py_projects/pygame_sim/model"
 
 ##################### DXF ANALYSATION #####################
 extensor = "model/extensor_hood_test002.dxf"
-Extensor = DXF_Loader(extensor, extensor_reduced_scale=1/650, x_vias=-3, y_vias=-7, z_vias=-1.5)
+Extensor = DXF_Loader(extensor, extensor_reduced_scale=1/1500, x_vias=-3, y_vias=-7, z_vias=-1.5)
 stop_points_3d, particle_points_3d, poly_lines_3d = Extensor.ver_col_ind()
 
+#sys.exit()
 #####################  LOAD 3D MODEL  #####################
 finger = "/Index"
 names_list = ["/Metacarpal3_01.stl",
@@ -139,6 +140,9 @@ class Edge(object):
 
 Meta_angle, Meta_AbdAdd_angle, ProP_angle, MidP_angle, DisP_angle = 0., 0., 0., 0., 0.
 Meta, PrxPh, MddPh, DisPh = False, False, False, False
+DisP_1, DisP_2, DisP_3 = [0,0,0], [0,0,0], [0,0,0]
+MidP_1, MidP_2, MidP_3 = [0,0,0], [0,0,0], [0,0,0]
+serect = None
 class DrawWidget(QGLWidget):
     Meta_buff=np.array([None])
     ProP_buff=np.array([None])
@@ -169,6 +173,49 @@ class DrawWidget(QGLWidget):
         self.keys_list = []
         self.all_camera_status = []
         #self.Meta_angle, self.ProP_angle, self.MidP_angle, self.DisP_angle = 0., 0., 0., 0.
+
+    def mode_sp(self, mode):
+        global serect
+        if   mode==0:serect="DisP_1";
+        elif mode==1:serect="DisP_2";
+        elif mode==2:serect="DisP_3";
+        elif mode==3:serect="MidP_1";
+        elif mode==4:serect="MidP_2";
+        elif mode==5:serect="MidP_3";
+
+    def sp_slide_listener(self, axis, val):
+        global DisP_1, DisP_2, DisP_3, MidP_1, MidP_2, MidP_3
+        if   serect=="DisP_1":
+            if   axis=="X":DisP_1[0]=val
+            elif axis=="Y":DisP_1[1]=val
+            elif axis=="Z":DisP_1[2]=val
+            print(serect, DisP_1)
+        elif serect=="DisP_2":
+            if   axis=="X":DisP_2[0]=val
+            elif axis=="Y":DisP_2[1]=val
+            elif axis=="Z":DisP_2[2]=val
+            print(serect, DisP_2)
+        elif serect=="DisP_3":
+            if   axis=="X":DisP_3[0]=val
+            elif axis=="Y":DisP_3[1]=val
+            elif axis=="Z":DisP_3[2]=val
+            print(serect, DisP_3)
+        elif serect=="MidP_1":
+            if   axis=="X":MidP_1[0]=val
+            elif axis=="Y":MidP_1[1]=val
+            elif axis=="Z":MidP_1[2]=val
+            print(serect, MidP_1)
+        elif serect=="MidP_2":
+            if   axis=="X":MidP_2[0]=val
+            elif axis=="Y":MidP_2[1]=val
+            elif axis=="Z":MidP_2[2]=val
+            print(serect, MidP_2)
+        elif serect=="MidP_3":
+            if   axis=="X":MidP_3[0]=val
+            elif axis=="Y":MidP_3[1]=val
+            elif axis=="Z":MidP_3[2]=val
+            print(serect, MidP_3)
+        else:print("serect is None")
 
     def joint_listener(self, typ, val):
         global Meta_angle, Meta_AbdAdd_angle, ProP_angle, MidP_angle, DisP_angle
@@ -312,6 +359,8 @@ class DrawWidget(QGLWidget):
         ##########################  DRAW EXTENSOR HOOD  ##########################
         glPushMatrix();
         glColor3f(0, 1, 1)
+        #glTranslatef(*DisP_1)
+        glTranslatef(2.4, 9, 0.7)
         glLineWidth(5.0)
         for line_clump in poly_lines_3d:
             glBegin(GL_LINE_STRIP)
@@ -319,6 +368,8 @@ class DrawWidget(QGLWidget):
                 glVertex3fv(poly)
             glEnd()
         glPopMatrix();
+
+        ##########################################################################
 
         glColor3f(0, 1, 0)
         glPointSize(20)
@@ -421,18 +472,25 @@ class Joint_Slider(QWidget):
 class Coordination_slider(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.gl = DrawWidget(self)
         ## パーティクルの移動
-        slider_x.setMinimum(-20)
-        slider_x.setMaximum(20)
         slider_x = QSlider(Qt.Horizontal)
+        slider_x.setMinimum(-10)
+        slider_x.setMaximum(10)
+        slider_x.setTickInterval(.1)
+        slider_x.valueChanged.connect(lambda val: self.gl.sp_slide_listener("X", val))
 
-        slider_y.setMinimum(-20)
-        slider_y.setMaximum(20)
         slider_y = QSlider(Qt.Horizontal)
+        slider_y.setMinimum(-10)
+        slider_y.setMaximum(10)
+        slider_y.setTickInterval(.1)
+        slider_y.valueChanged.connect(lambda val: self.gl.sp_slide_listener("Y", val))
 
-        slider_z.setMinimum(-20)
-        slider_z.setMaximum(20)
         slider_z = QSlider(Qt.Horizontal)
+        slider_z.setMinimum(-10)
+        slider_z.setMaximum(10)
+        slider_z.setTickInterval(.1)
+        slider_z.valueChanged.connect(lambda val: self.gl.sp_slide_listener("Z", val))
 
         label_x = QLabel("Coordination X")
         label_y = QLabel("Coordination Y")
@@ -452,11 +510,16 @@ class Coordination_slider(QFrame):
 class Particle_cBox(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.gl = DrawWidget(self)
         ## パーティクルの選択
         cBox_label = QLabel("Select Stop Particle")
         self.combo = QComboBox(self)
-        self.combo.addItem("Particle1")
-        self.combo.addItem("Particle2")
+        self.combo.addItem("DisP_1")
+        self.combo.addItem("DisP_2")
+        self.combo.addItem("DisP_3")
+        self.combo.addItem("MidP_1")
+        self.combo.addItem("MidP_2")
+        self.combo.addItem("MidP_3")
 
         button = QPushButton("Check")
         button.clicked.connect(self.buttonClicked)
@@ -469,7 +532,7 @@ class Particle_cBox(QFrame):
         self.setLayout(layout)
 
     def buttonClicked(self):
-        print(self.combo.currentIndex(), self.combo.currentText())
+        self.gl.mode_sp(self.combo.currentIndex())
 
 class AnchorPoint_Slider(QWidget):
     def __init__(self, parent=None):
@@ -507,7 +570,6 @@ class Bone_CheckBox(QWidget):
         self.initUI()
 
     def initUI(self):
-
         for i, v in enumerate(self.listCheckBox):
             self.listCheckBox[i] = QCheckBox(v)
             self.listLabel[i] = QLabel()
