@@ -138,6 +138,93 @@ class Edge(object):
             if not self.p1.constrained: self.p1.pos[i] += movement_for_each*vec[i]
             if not self.p2.constrained: self.p2.pos[i] -= movement_for_each*vec[i]
 
+class ClothCPU(object):
+    def __init__(self, res):
+        self.res = res
+
+        corners = [[-1,-1], [ 1,-1],
+                   [-1, 1], [ 1, 1]]
+
+        edges   = [[ 0,-1], [-1, 0],
+                   [ 1, 0], [ 0, 1]]
+        self.rels = edges + corners
+        for rel in self.rels:
+            length = sum([rel[i]*rel[i] for i in [0,1]])**0.5
+            rel.append(length/float(self.res))
+
+        self.reset()
+    def reset(self):
+        self.particles = []
+        for z in range(self.res):
+            row = []
+            for x in range(self.res):
+                row.append(Particle([float(x)/float(self.res-1), 1.0,
+                                     float(z)/float(self.res-1)]))
+
+            self.particles.append(row)
+        self.particles[         0][         0].constrained = True
+        self.particles[self.res-1][         0].constrained = True
+        self.particles[         0][self.res-1].constrained = True
+
+        self.edges = []
+        for z1 in range(self.res):
+            for x1 in range(self.res):
+                p1 = self.particles[z1][x1]
+                for rel in self.rels:
+                    x2 = x1 + rel[0]
+                    z2 = z1 + rel[1]
+                    if x2 < 0 or x2 >= self.res: continue
+                    if z2 < 0 or z2 >= self.res: continue
+                    p2 = self.particles[z2][x2]
+
+                    found = False
+                    for edge in self.edges:
+                        if edge.p1 == p2:
+                            found = True
+                            break
+                    if found: continue
+
+                    self.edges.append(Edge(p1,p2))
+
+    def constrain(self, n):
+        for constraint_pass in range(n):
+            for edge in self.edges:
+                edge.constrain()
+    def update(self,dt):
+        #Gravity
+        for row in self.particles:
+            for particle in row:
+                particle.accel = [0.0, gravity, 0.0]
+        #Move everything
+        for row in self.particles:
+            for particle in row:
+                particle.move(dt)
+
+    def draw(self):
+        glBegin(GL_POINTS)
+        for row in self.particles:
+            for particle in row:
+                particle.draw()
+        glEnd()
+
+    def draw_wireframe(self):
+        glBegin(GL_LINES)
+        for edge in self.edges:
+            glVertex3fv(edge.p1.pos)
+            glVertex3fv(edge.p2.pos)
+        glEnd()
+
+    def draw_mesh(self):
+        for z in range(self.res-1):
+            glBegin(GL_QUAD_STRIP)
+            for x in range(self.res):
+                glVertex3fv(self.particles[z  ][x].pos)
+                glVertex3fv(self.particles[z+1][x].pos)
+            glEnd()
+
+
+
+
 Meta_angle, Meta_AbdAdd_angle, ProP_angle, MidP_angle, DisP_angle = 0., 0., 0., 0., 0.
 Meta, PrxPh, MddPh, DisPh = False, False, False, False
 DisP_1, DisP_2, DisP_3 = [0,0,0], [0,0,0], [0,0,0]
@@ -358,7 +445,7 @@ class DrawWidget(QGLWidget):
 
         ##########################  DRAW EXTENSOR HOOD  ##########################
         glPushMatrix();
-        glColor3f(0, 1, 1)
+        glColor3f(1, 0, 1)
         #glTranslatef(*DisP_1)
         glTranslatef(2.4, 9, 0.7)
         glLineWidth(5.0)
@@ -369,14 +456,19 @@ class DrawWidget(QGLWidget):
             glEnd()
         glPopMatrix();
 
+        glPushMatrix();
+        glColor3f(0, 1, 0)
+        glTranslatef(2.4, 9, 0.7)
+        glPointSize(15)
+        glBegin(GL_POINTS)
+        for sp in stop_points_3d:
+            glVertex3fv(sp)
+        glEnd()
+        glPopMatrix();
+
         ##########################################################################
 
-        glColor3f(0, 1, 0)
-        glPointSize(20)
-        glBegin(GL_POINTS)
-        glVertex3fv(tuple((1.2, 8, 0)))
-        glEnd()
-
+        ## 原点の描画
         glColor3f(1, 1, 0)
         glPointSize(30)
         glBegin(GL_POINTS)
