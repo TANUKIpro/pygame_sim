@@ -1,5 +1,6 @@
 import numpy as np
 import dxfgrabber
+from decimal import Decimal, ROUND_HALF_UP, ROUND_HALF_EVEN
 
 #file_name="model/extensor_hood_test001.dxf"
 #file_name="model/extensor_hood_test002.dxf"
@@ -12,7 +13,7 @@ class DXF_Loader:
         self.y_vias = y_vias#880
         self.z_vias = z_vias
         self.inversion = inversion  ## 反転操作(-1or1)
-        self.round_quality = 2
+        self.round_quality = 6
 
         self.stop_points = []      ## 固定パーティクルの座標が格納
         self.poly_lines = []       ## ポリラインの頂点座標が格納
