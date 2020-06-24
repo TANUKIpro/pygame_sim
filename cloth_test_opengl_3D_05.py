@@ -25,10 +25,19 @@ to_models = "/Users/ryotaro/py_projects/pygame_sim/model"
 
 ##################### DXF ANALYSATION #####################
 extensor = "model/extensor_hood_test002.dxf"
-Extensor = DXF_Loader(extensor, extensor_reduced_scale=1/1500, x_vias=-3, y_vias=-7, z_vias=-1.5)
+## スケーリング済
+extensor_reduced_scale = 1/1500
+Extensor = DXF_Loader(extensor, extensor_reduced_scale, -0.65, 2, -1.)
 stop_points_3d, particle_points_3d, poly_lines_3d = Extensor.ver_col_ind()
+## オリジナルスケール
+orgExtensor = DXF_Loader(extensor, 1, 0, 0, 0, integer=True)
+org_sp_3d, org_pp_3d, org_pl_3d = orgExtensor.ver_col_ind()
 
-#sys.exit()
+const_set = []
+for set in poly_lines_3d:
+    for i in range(len(set)-1):
+        const_set.append([set[i].tolist(), set[i+1].tolist()])
+
 #####################  LOAD 3D MODEL  #####################
 finger = "/Index"
 names_list = ["/Metacarpal3_01.stl",
@@ -58,7 +67,7 @@ ProP_Frame_col = Metacarpal3.color(ProP_ver, _r=0, _g=0, _b=0)
 MidP_Frame_col = Metacarpal3.color(MidP_ver, _r=0, _g=0, _b=0)
 DisP_Frame_col = Metacarpal3.color(DisP_ver, _r=0, _g=0, _b=0)
 
-""" 各モデルの座標の最大値 """
+""" 各モデルの座標の最大値(Y軸) """
 Meta_max_index = np.argmax(np.array(Metacarpal3.all_mesh_particle)[:,1])
 Meta_max_cood = Metacarpal3.all_mesh_particle[Meta_max_index]
 ProP_max_index = np.argmax(np.array(Proximal_Phalanx3.all_mesh_particle)[:,1])
@@ -80,150 +89,145 @@ def subtract(vec1,vec2):
 def get_length(vec):
     return sum([vec[i]*vec[i] for i in [0,1,2]])**0.5
 
-class Particle(object):
-    def __init__(self,pos):
-        self.pos = pos
-        self.last_pos = list(self.pos)
-        self.accel = [0.0,0.0,0.0]
-        self.constrained = False
+BLACK = (0, 0, 0)
+WHITE = (1, 1, 1)
+RED   = (1, 0, 0)
+GREEN = (0, 1, 0)
 
-    def move(self,dt):
-        #Don't move constrained particles
-        if self.constrained: return
-        #Move
-        for i in [0,1,2]:
-            #Verlet
-            temp = 2*self.pos[i] - self.last_pos[i] + self.accel[i]*dt*dt
-            self.last_pos[i] = self.pos[i]
-            self.pos[i] = temp
+delta_t = 0.1
+NUM_ITER = 3
 
-            if self.pos[i] < 0.0: self.pos[i] = 0.0
-            elif self.pos[i] > 1.0: self.pos[i] = 1.0
+class Particle:
+    def __init__(self, x, y, z, m=1.0):
+        self.m = m
+        self.init_x, self.init_y, self.init_z = x, y, z
+        self.x, self.y, self.z = x, y, z
+        self.oldx, self.oldy, self.oldz = x, y, z
+        self.newx, self.newy, self.newz = x, y, z
+        self.ax = 0
+        self.ay = 0#-9.8 #0
+        self.az = 0
+
+        self.fixed = False
+        self.selected = False
+
+    def update(self, delta_t):
+        if self.fixed == False:
+            # Verlet Integration
+            # (https://www.watanabe-lab.jp/blog/archives/1993)
+            self.newx = 2.0 * self.x - self.oldx + self.ax * delta_t**2
+            self.newy = 2.0 * self.y - self.oldy + self.ay * delta_t**2
+            self.newz = 2.0 * self.z - self.oldz + self.az * delta_t**2
+            self.oldx = self.x
+            self.oldy = self.y
+            self.oldz = self.z
+            self.x = self.newx
+            self.y = self.newy
+            self.z = self.newz
+
+    def set_pos(self, pos):
+        self.x, self.y, self.z = pos
 
     def draw(self):
-        glVertex3fv(self.pos)
-
-class Edge(object):
-    def __init__(self, p1,p2, tolerance=0.1):
-        self.p1 = p1
-        self.p2 = p2
-
-        self.tolerance = tolerance
-
-        self.rest_length = get_length(subtract(self.p2.pos,self.p1.pos))
-        self.lower_length = self.rest_length*(1.0-self.tolerance)
-        self.upper_length = self.rest_length*(1.0+self.tolerance)
-
-    def constrain(self):
-        vec = [self.p2.pos[i]-self.p1.pos[i] for i in [0,1,2]]
-        length = get_length(vec)
-
-        if   length > self.upper_length:
-            target_length = self.upper_length
-            strength = 1.0
-        elif length < self.lower_length:
-            target_length = self.lower_length
-            strength = 1.0
-        elif length > self.rest_length:
-            target_length = self.rest_length
-            strength = (length - self.rest_length) / ( 0.1*self.rest_length)
-        elif length < self.rest_length:
-            target_length = self.rest_length
-            strength = (length - self.rest_length) / (-0.1*self.rest_length)
+        if self.fixed == True:
+            color = GREEN
+            moji = str(self.x)+", "+str(self.y)+", "+str(self.z)
+            #t_xt = font.render(moji, True, (0, 0, 0))
+            #screen.blit(txt, [self.x, self.y])
         else:
-            return
-        movement_for_each = strength * (length - target_length) / 2.0
+            color = BLACK
+        if self.selected == True:
+            color = RED
 
-        for i in [0,1,2]:
-            if not self.p1.constrained: self.p1.pos[i] += movement_for_each*vec[i]
-            if not self.p2.constrained: self.p2.pos[i] -= movement_for_each*vec[i]
+        glColor3f(1, 0, 0);
+        glPointSize(10);
+        glBegin(GL_POINTS);
+        glVertex3fv(tuple((self.x, self.y, self.z)));
+        glEnd();
 
-class ClothCPU(object):
-    def __init__(self, res):
-        self.res = res
+# パーティクルへの拘束条件
+class Constraint:
+    def __init__(self, index0, index1):
+        self.index0 = index0
+        self.index1 = index1
+        delta_x = particles[index0].x - particles[index1].x
+        delta_y = particles[index0].y - particles[index1].y
+        delta_z = particles[index0].z - particles[index1].z
+        self.restLength = sqrt(delta_x**2 + delta_y**2 + delta_z**2)
+        self.init_d = 0
+        self.d      = 0
 
-        corners = [[-1,-1], [ 1,-1],
-                   [-1, 1], [ 1, 1]]
+    def update(self):
+        delta_x = particles[self.index1].x - particles[self.index0].x
+        delta_y = particles[self.index1].y - particles[self.index0].y
+        delta_z = particles[self.index1].z - particles[self.index0].z
+        deltaLength = sqrt(delta_x**2 + delta_y**2 + delta_z**2)
+        diff = (deltaLength - self.restLength)/(deltaLength+0.001)
 
-        edges   = [[ 0,-1], [-1, 0],
-                   [ 1, 0], [ 0, 1]]
-        self.rels = edges + corners
-        for rel in self.rels:
-            length = sum([rel[i]*rel[i] for i in [0,1]])**0.5
-            rel.append(length/float(self.res))
-
-        self.reset()
-    def reset(self):
-        self.particles = []
-        for z in range(self.res):
-            row = []
-            for x in range(self.res):
-                row.append(Particle([float(x)/float(self.res-1), 1.0,
-                                     float(z)/float(self.res-1)]))
-
-            self.particles.append(row)
-        self.particles[         0][         0].constrained = True
-        self.particles[self.res-1][         0].constrained = True
-        self.particles[         0][self.res-1].constrained = True
-
-        self.edges = []
-        for z1 in range(self.res):
-            for x1 in range(self.res):
-                p1 = self.particles[z1][x1]
-                for rel in self.rels:
-                    x2 = x1 + rel[0]
-                    z2 = z1 + rel[1]
-                    if x2 < 0 or x2 >= self.res: continue
-                    if z2 < 0 or z2 >= self.res: continue
-                    p2 = self.particles[z2][x2]
-
-                    found = False
-                    for edge in self.edges:
-                        if edge.p1 == p2:
-                            found = True
-                            break
-                    if found: continue
-
-                    self.edges.append(Edge(p1,p2))
-
-    def constrain(self, n):
-        for constraint_pass in range(n):
-            for edge in self.edges:
-                edge.constrain()
-    def update(self,dt):
-        #Gravity
-        for row in self.particles:
-            for particle in row:
-                particle.accel = [0.0, gravity, 0.0]
-        #Move everything
-        for row in self.particles:
-            for particle in row:
-                particle.move(dt)
+        le = 0.5
+        if particles[self.index0].fixed == False:
+            particles[self.index0].x += le * diff * delta_x
+            particles[self.index0].y += le * diff * delta_y
+            particles[self.index0].z += le * diff * delta_z
+        if particles[self.index1].fixed == False:
+            particles[self.index1].x -= le * diff * delta_x
+            particles[self.index1].y -= le * diff * delta_y
+            particles[self.index1].z += le * diff * delta_z
 
     def draw(self):
-        glBegin(GL_POINTS)
-        for row in self.particles:
-            for particle in row:
-                particle.draw()
-        glEnd()
+        ## 初期位置からパーティクル間の距離を計算
+        f_x0 = particles[self.index0].init_x
+        f_y0 = particles[self.index0].init_y
+        f_z0 = particles[self.index0].init_z
+        f_x1 = particles[self.index1].init_x
+        f_y1 = particles[self.index1].init_y
+        f_z1 = particles[self.index1].init_z
+        self.init_d = sqrt((f_x0-f_x1)**2+(f_y0-f_y1)**2+(f_z0-f_z1)**2)
 
-    def draw_wireframe(self):
+        x0 = particles[self.index0].x
+        y0 = particles[self.index0].y
+        z0 = particles[self.index0].z
+        x1 = particles[self.index1].x
+        y1 = particles[self.index1].y
+        z1 = particles[self.index1].z
+        self.d = sqrt((x0-x1)**2+(y0-y1)**2++(z0-z1)**2)
+
+        #pygame.draw.line(surf, rgb(d, minimum=init_d, maximum=init_d*1.25),
+        #                 (int(x0), int(y0)), (int(x1), int(y1)), size)
+        glColor3f(1, 0, 1)
         glBegin(GL_LINES)
-        for edge in self.edges:
-            glVertex3fv(edge.p1.pos)
-            glVertex3fv(edge.p2.pos)
+        glVertex3fv(tuple((x0, y0, z0)))
+        glVertex3fv(tuple((x1, y1, z1)))
         glEnd()
+###
+###stop_points_3d, particle_points_3d, poly_lines_3d
+particles = []
+for p_point in particle_points_3d:
+    p = Particle(p_point[0], p_point[1], p_point[2])
+    particles.append(p)
 
-    def draw_mesh(self):
-        for z in range(self.res-1):
-            glBegin(GL_QUAD_STRIP)
-            for x in range(self.res):
-                glVertex3fv(self.particles[z  ][x].pos)
-                glVertex3fv(self.particles[z+1][x].pos)
-            glEnd()
+for sp in stop_points_3d:
+    try:
+        anc_idx = particle_points_3d.tolist().index(sp.tolist())
+        particles[anc_idx].fixed = True
+    except:
+        print("sp error : ", sp)
 
+constraints = []
+for pl in poly_lines_3d:
+    top_count = len(pl)
+    pl = pl.tolist()
+    for i in range(top_count-1):
+        try:
+            index0 = particle_points_3d.tolist().index(pl[i])
+            index1 = particle_points_3d.tolist().index(pl[i+1])
+            c = Constraint(index0, index1)
+            constraints.append(c)
+        except:
+            print("pl error : ",pl[i])
 
-
+#print(constraints)
+#sys.exit()
 
 Meta_angle, Meta_AbdAdd_angle, ProP_angle, MidP_angle, DisP_angle = 0., 0., 0., 0., 0.
 Meta, PrxPh, MddPh, DisPh = False, False, False, False
@@ -336,14 +340,6 @@ class DrawWidget(QGLWidget):
         elif key==Qt.Key_Up    : self.angle_z += move_pix
         elif key==Qt.Key_Down  : self.angle_z -= move_pix
 
-    def cameraRESET(self):
-        self.camera_rot = [70,23]
-        self.camera_radius = 2.5
-        self.camera_center = [0.5,0.5,0.5]
-        self.camera_cood = [[0.],[0.],[0.]]
-        self.angle_x, self.angle_y, self.angle_z = 0., 0., 0.
-        self.vias_x, self.vias_y, self.vias_z = 0.,0.,0.
-
     def mouse_listener(self, type, event, mv_cood=[0, 0]):
         ## LEFT, MIDDLE, RIGHT, WHEEL, MOVE
         move_pix = 0.5
@@ -353,6 +349,14 @@ class DrawWidget(QGLWidget):
         if type == 'WHEEL':
             if   event.angleDelta().y() == 120  : self.camera_radius -= move_pix
             elif event.angleDelta().y() == -120 : self.camera_radius += move_pix
+
+    def cameraRESET(self):
+        self.camera_rot = [70,23]
+        self.camera_radius = 2.5
+        self.camera_center = [0.5,0.5,0.5]
+        self.camera_cood = [[0.],[0.],[0.]]
+        self.angle_x, self.angle_y, self.angle_z = 0., 0., 0.
+        self.vias_x, self.vias_y, self.vias_z = 0.,0.,0.
 
     def paintGL(self):
         glClearColor(*self.bRGB, 0.0)
@@ -444,6 +448,19 @@ class DrawWidget(QGLWidget):
         drawText("DisP Angle  : "+str(float(DisP_angle))+"°", 2, screen_size[1]-40, *screen_size)
 
         ##########################  DRAW EXTENSOR HOOD  ##########################
+        for i in range(len(particles)):
+            particles[i].update(delta_t)
+
+        for i in range(NUM_ITER):
+            for ii in range(len(constraints)):
+                constraints[ii].update()
+
+        for i in range(len(particles)):
+            particles[i].draw()
+
+        for i in range(len(constraints)):
+            constraints[i].draw()
+        """
         glPushMatrix();
         glColor3f(1, 0, 1)
         #glTranslatef(*DisP_1)
@@ -465,6 +482,7 @@ class DrawWidget(QGLWidget):
             glVertex3fv(sp)
         glEnd()
         glPopMatrix();
+        """
 
         ##########################################################################
 
