@@ -17,7 +17,7 @@ from stl_loader import STL_loader
 from drawer import drawPolygon, drawText, drawText_3D, drawAxis, create_vbo, draw_vbo
 import ctypes
 import numpy as np
-from math import sqrt, pi, exp
+from math import sqrt, pi, exp, floor
 
 window_title = "Cloth SIM@PyQt5 v.0.5"
 screen_size = [600, 500]
@@ -94,8 +94,8 @@ WHITE = (1, 1, 1)
 RED   = (1, 0, 0)
 GREEN = (0, 1, 0)
 
-delta_t = 0.1
-NUM_ITER = 3
+delta_t = 0.2
+NUM_ITER = 10
 
 class Particle:
     def __init__(self, x, y, z, m=1.0):
@@ -106,10 +106,9 @@ class Particle:
         self.newx, self.newy, self.newz = x, y, z
         self.ax = 0
         self.ay = 0#-9.8 #0
-        self.az = 0
+        self.az = -5
 
         self.fixed = False
-        self.selected = False
 
     def update(self, delta_t):
         if self.fixed == False:
@@ -131,15 +130,10 @@ class Particle:
     def draw(self):
         if self.fixed == True:
             color = GREEN
-            moji = str(self.x)+", "+str(self.y)+", "+str(self.z)
-            #t_xt = font.render(moji, True, (0, 0, 0))
-            #screen.blit(txt, [self.x, self.y])
         else:
-            color = BLACK
-        if self.selected == True:
             color = RED
 
-        glColor3f(1, 0, 0);
+        glColor3f(*color);
         glPointSize(10);
         glBegin(GL_POINTS);
         glVertex3fv(tuple((self.x, self.y, self.z)));
@@ -172,7 +166,7 @@ class Constraint:
         if particles[self.index1].fixed == False:
             particles[self.index1].x -= le * diff * delta_x
             particles[self.index1].y -= le * diff * delta_y
-            particles[self.index1].z += le * diff * delta_z
+            particles[self.index1].z -= le * diff * delta_z
 
     def draw(self):
         ## 初期位置からパーティクル間の距離を計算
@@ -213,21 +207,25 @@ for sp in stop_points_3d:
     except:
         print("sp error : ", sp)
 
+def flooring(x):
+    n=2
+    return floor(x*10**n) / (10**n)
+
 constraints = []
 for pl in poly_lines_3d:
     top_count = len(pl)
     pl = pl.tolist()
     for i in range(top_count-1):
         try:
-            index0 = particle_points_3d.tolist().index(pl[i])
-            index1 = particle_points_3d.tolist().index(pl[i+1])
+            if pl[i][1] == 5.8583:index0 = 31
+            else:index0 = particle_points_3d.tolist().index(pl[i])
+
+            if pl[i+1][1] == 5.8583:index1 = 31
+            else:index1 = particle_points_3d.tolist().index(pl[i+1])
             c = Constraint(index0, index1)
             constraints.append(c)
         except:
-            print("pl error : ",pl[i])
-
-#print(constraints)
-#sys.exit()
+            print("pl error : ",pl[i], pl[i+1])
 
 Meta_angle, Meta_AbdAdd_angle, ProP_angle, MidP_angle, DisP_angle = 0., 0., 0., 0., 0.
 Meta, PrxPh, MddPh, DisPh = False, False, False, False
@@ -448,6 +446,7 @@ class DrawWidget(QGLWidget):
         drawText("DisP Angle  : "+str(float(DisP_angle))+"°", 2, screen_size[1]-40, *screen_size)
 
         ##########################  DRAW EXTENSOR HOOD  ##########################
+        glPushMatrix();
         for i in range(len(particles)):
             particles[i].update(delta_t)
 
@@ -455,43 +454,22 @@ class DrawWidget(QGLWidget):
             for ii in range(len(constraints)):
                 constraints[ii].update()
 
+        #glRotatef(ProP_angle, 1, 0, 0)
         for i in range(len(particles)):
             particles[i].draw()
 
         for i in range(len(constraints)):
             constraints[i].draw()
-        """
-        glPushMatrix();
-        glColor3f(1, 0, 1)
-        #glTranslatef(*DisP_1)
-        glTranslatef(2.4, 9, 0.7)
-        glLineWidth(5.0)
-        for line_clump in poly_lines_3d:
-            glBegin(GL_LINE_STRIP)
-            for poly in line_clump:
-                glVertex3fv(poly)
-            glEnd()
         glPopMatrix();
-
-        glPushMatrix();
-        glColor3f(0, 1, 0)
-        glTranslatef(2.4, 9, 0.7)
-        glPointSize(15)
-        glBegin(GL_POINTS)
-        for sp in stop_points_3d:
-            glVertex3fv(sp)
-        glEnd()
-        glPopMatrix();
-        """
-
         ##########################################################################
-
+        glPushMatrix();
         ## 原点の描画
         glColor3f(1, 1, 0)
         glPointSize(30)
         glBegin(GL_POINTS)
         glVertex3fv(self.org)
         glEnd()
+        glPopMatrix();
 
         glFlush()
 
