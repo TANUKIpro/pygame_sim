@@ -106,9 +106,12 @@ class Particle:
         self.newx, self.newy, self.newz = x, y, z
         self.ax = 0
         self.ay = 0#-9.8 #0
-        self.az = -5
+        self.az = 0
 
         self.fixed = False
+
+    def when_move(self, x, y, z):
+        self.x, self.y, self.z = x, y, z
 
     def update(self, delta_t):
         if self.fixed == False:
@@ -127,12 +130,23 @@ class Particle:
     def set_pos(self, pos):
         self.x, self.y, self.z = pos
 
-    def draw(self):
-        if self.fixed == True:
-            color = GREEN
-        else:
-            color = RED
+    def draw_sp(self):
+        color = GREEN
+        glColor3f(*color);
+        glPointSize(10);
+        glBegin(GL_POINTS);
+        glVertex3fv(tuple((self.x, self.y, self.z)));
+        glEnd();
 
+        drawText_3D(str(self.x)+", "+str(self.y)+", "+str(self.z),
+                    self.x, self.y, self.z)
+
+    def draw(self):
+        DisP_cood_y = 10.61333
+        MidP_cood_y = 8.88667
+        #if self.fixed == True:
+        #else:
+        color = RED
         glColor3f(*color);
         glPointSize(10);
         glBegin(GL_POINTS);
@@ -193,13 +207,15 @@ class Constraint:
         glVertex3fv(tuple((x0, y0, z0)))
         glVertex3fv(tuple((x1, y1, z1)))
         glEnd()
-###
+
 ###stop_points_3d, particle_points_3d, poly_lines_3d
 particles = []
 for p_point in particle_points_3d:
     p = Particle(p_point[0], p_point[1], p_point[2])
     particles.append(p)
 
+### DISTAL PHALANX SP ancs[8, 1, 7] -> particles[60, 21, 59] ###
+### MIDDLE PHALANX SP ancs[6, 0, 5] -> particles[58, 22, 57] ###
 for sp in stop_points_3d:
     try:
         anc_idx = particle_points_3d.tolist().index(sp.tolist())
@@ -207,8 +223,7 @@ for sp in stop_points_3d:
     except:
         print("sp error : ", sp)
 
-def flooring(x):
-    n=2
+def flooring(x, n=2):
     return floor(x*10**n) / (10**n)
 
 constraints = []
@@ -379,6 +394,15 @@ class DrawWidget(QGLWidget):
         drawText_3D("Z", 0., 0., 3.)
         drawAxis()
 
+        ##########################  SET EXTENSOR HOOD  ##########################
+
+        for i in range(len(particles)):
+            particles[i].update(delta_t)
+
+        for i in range(NUM_ITER):
+            for ii in range(len(constraints)):
+                constraints[ii].update()
+
         ##############################  DRAW BONES  ##############################
         glPushMatrix();
         ## 中手骨の描画
@@ -391,7 +415,8 @@ class DrawWidget(QGLWidget):
             draw_vbo(outMeta_buff, Meta_ind, mode_front=GL_LINE, mode_back=GL_LINE)
 
         ## 基節骨の描画
-        glTranslatef(2.4, (Meta_max_cood[1]-0.2)-Meta_angle*0.01, Meta_angle*0.002)
+        pos_proP = (2.4, (Meta_max_cood[1]-0.2)-Meta_angle*0.01, Meta_angle*0.002)
+        glTranslatef(*pos_proP)
         if not PrxPh:
             global ProP_buff, outProP_buff
             if self.ProP_buff.all()==None:
@@ -406,7 +431,8 @@ class DrawWidget(QGLWidget):
 
         ## 中節骨の描画
         mddp_vias = gaussian_function(sigma=20, mu=60, x=ProP_angle, A=1.7)
-        glTranslatef(0, (1.462+1.8)-ProP_angle*0.008, -ProP_angle*0.001+mddp_vias)
+        pos_midP = (0, (1.462+1.8)-ProP_angle*0.008, -ProP_angle*0.001+mddp_vias)
+        glTranslatef(*pos_midP)
         if not MddPh:
             global MidP_buff, outMidP_buff
             if self.MidP_buff.all()==None:
@@ -416,9 +442,21 @@ class DrawWidget(QGLWidget):
             draw_vbo(MidP_buff, MidP_ind)
             draw_vbo(outMidP_buff, MidP_ind, mode_front=GL_LINE)
 
+            #print(pos_proP[1]+pos_midP[1])
+            glTranslatef(0,pos_proP[1]+pos_midP[1],0)
+            particles[58].draw_sp()
+            particles[58].when_move(0, (1.462+1.8)-ProP_angle*0.008, -ProP_angle*0.001+mddp_vias)
+            particles[22].draw_sp()
+            particles[22].when_move(0, (1.462+1.8)-ProP_angle*0.008, -ProP_angle*0.001+mddp_vias)
+            particles[57].draw_sp()
+            particles[57].when_move(0, (1.462+1.8)-ProP_angle*0.008, -ProP_angle*0.001+mddp_vias)
+            glTranslatef(0,0,0)
+
+
         ## 末節骨の描画
         disp_vias = gaussian_function(sigma=25, mu=70, x=MidP_angle, A=1.9)
-        glTranslatef(0, (2.906-0.95)-MidP_angle*0.009, -MidP_angle*0.005+disp_vias)
+        pos_disP = (0, (2.906-0.95)-MidP_angle*0.009, -MidP_angle*0.005+disp_vias)
+        glTranslatef(*pos_disP)
         if not DisPh:
             global DisP_buff, outDisP_buff
             if self.DisP_buff.all()==None:
@@ -427,6 +465,13 @@ class DrawWidget(QGLWidget):
             glRotatef(MidP_angle+3, 1, 0, 0)
             draw_vbo(DisP_buff, DisP_ind)
             draw_vbo(outDisP_buff, DisP_ind, mode_front=GL_LINE)
+
+            glTranslatef(0,pos_proP[1]+pos_midP[1]+pos_disP[1],0)
+            particles[60].draw_sp()
+            particles[21].draw_sp()
+            particles[59].draw_sp()
+            glTranslatef(0,0,0)
+
         glPopMatrix();
         ##########################################################################
 
@@ -446,30 +491,22 @@ class DrawWidget(QGLWidget):
         drawText("DisP Angle  : "+str(float(DisP_angle))+"°", 2, screen_size[1]-40, *screen_size)
 
         ##########################  DRAW EXTENSOR HOOD  ##########################
+        #"""
         glPushMatrix();
-        for i in range(len(particles)):
-            particles[i].update(delta_t)
-
-        for i in range(NUM_ITER):
-            for ii in range(len(constraints)):
-                constraints[ii].update()
-
-        #glRotatef(ProP_angle, 1, 0, 0)
         for i in range(len(particles)):
             particles[i].draw()
 
         for i in range(len(constraints)):
             constraints[i].draw()
         glPopMatrix();
+        #"""
         ##########################################################################
-        glPushMatrix();
         ## 原点の描画
         glColor3f(1, 1, 0)
         glPointSize(30)
         glBegin(GL_POINTS)
         glVertex3fv(self.org)
         glEnd()
-        glPopMatrix();
 
         glFlush()
 
