@@ -12,9 +12,13 @@ from PyQt5 import QtCore as Qt
 from PyQt5.QtCore import *
 from PyQt5.QtOpenGL import *
 from stl import mesh
+
 from dxf_loader import DXF_Loader
 from stl_loader import STL_loader
 from drawer import drawPolygon, drawText, drawText_3D, drawAxis, create_vbo, draw_vbo
+import particle
+import constraint
+
 import ctypes
 import numpy as np
 from math import sqrt, pi, exp, floor
@@ -97,117 +101,6 @@ GREEN = (0, 1, 0)
 delta_t = 0.2
 NUM_ITER = 10
 
-class Particle:
-    def __init__(self, x, y, z, m=1.0):
-        self.m = m
-        self.init_x, self.init_y, self.init_z = x, y, z
-        self.x, self.y, self.z = x, y, z
-        self.oldx, self.oldy, self.oldz = x, y, z
-        self.newx, self.newy, self.newz = x, y, z
-        self.ax = 0
-        self.ay = 0#-9.8 #0
-        self.az = 0
-
-        self.fixed = False
-
-    def when_move(self, x, y, z):
-        self.x, self.y, self.z = x, y, z
-
-    def update(self, delta_t):
-        if self.fixed == False:
-            # Verlet Integration
-            # (https://www.watanabe-lab.jp/blog/archives/1993)
-            self.newx = 2.0 * self.x - self.oldx + self.ax * delta_t**2
-            self.newy = 2.0 * self.y - self.oldy + self.ay * delta_t**2
-            self.newz = 2.0 * self.z - self.oldz + self.az * delta_t**2
-            self.oldx = self.x
-            self.oldy = self.y
-            self.oldz = self.z
-            self.x = self.newx
-            self.y = self.newy
-            self.z = self.newz
-
-    def set_pos(self, pos):
-        self.x, self.y, self.z = pos
-
-    def draw_sp(self):
-        color = GREEN
-        glColor3f(*color);
-        glPointSize(10);
-        glBegin(GL_POINTS);
-        glVertex3fv(tuple((self.x, self.y, self.z)));
-        glEnd();
-
-        drawText_3D(str(self.x)+", "+str(self.y)+", "+str(self.z),
-                    self.x, self.y, self.z)
-
-    def draw(self):
-        DisP_cood_y = 10.61333
-        MidP_cood_y = 8.88667
-        #if self.fixed == True:
-        #else:
-        color = RED
-        glColor3f(*color);
-        glPointSize(10);
-        glBegin(GL_POINTS);
-        glVertex3fv(tuple((self.x, self.y, self.z)));
-        glEnd();
-
-# パーティクルへの拘束条件
-class Constraint:
-    def __init__(self, index0, index1):
-        self.index0 = index0
-        self.index1 = index1
-        delta_x = particles[index0].x - particles[index1].x
-        delta_y = particles[index0].y - particles[index1].y
-        delta_z = particles[index0].z - particles[index1].z
-        self.restLength = sqrt(delta_x**2 + delta_y**2 + delta_z**2)
-        self.init_d = 0
-        self.d      = 0
-
-    def update(self):
-        delta_x = particles[self.index1].x - particles[self.index0].x
-        delta_y = particles[self.index1].y - particles[self.index0].y
-        delta_z = particles[self.index1].z - particles[self.index0].z
-        deltaLength = sqrt(delta_x**2 + delta_y**2 + delta_z**2)
-        diff = (deltaLength - self.restLength)/(deltaLength+0.001)
-
-        le = 0.5
-        if particles[self.index0].fixed == False:
-            particles[self.index0].x += le * diff * delta_x
-            particles[self.index0].y += le * diff * delta_y
-            particles[self.index0].z += le * diff * delta_z
-        if particles[self.index1].fixed == False:
-            particles[self.index1].x -= le * diff * delta_x
-            particles[self.index1].y -= le * diff * delta_y
-            particles[self.index1].z -= le * diff * delta_z
-
-    def draw(self):
-        ## 初期位置からパーティクル間の距離を計算
-        f_x0 = particles[self.index0].init_x
-        f_y0 = particles[self.index0].init_y
-        f_z0 = particles[self.index0].init_z
-        f_x1 = particles[self.index1].init_x
-        f_y1 = particles[self.index1].init_y
-        f_z1 = particles[self.index1].init_z
-        self.init_d = sqrt((f_x0-f_x1)**2+(f_y0-f_y1)**2+(f_z0-f_z1)**2)
-
-        x0 = particles[self.index0].x
-        y0 = particles[self.index0].y
-        z0 = particles[self.index0].z
-        x1 = particles[self.index1].x
-        y1 = particles[self.index1].y
-        z1 = particles[self.index1].z
-        self.d = sqrt((x0-x1)**2+(y0-y1)**2++(z0-z1)**2)
-
-        #pygame.draw.line(surf, rgb(d, minimum=init_d, maximum=init_d*1.25),
-        #                 (int(x0), int(y0)), (int(x1), int(y1)), size)
-        glColor3f(1, 0, 1)
-        glBegin(GL_LINES)
-        glVertex3fv(tuple((x0, y0, z0)))
-        glVertex3fv(tuple((x1, y1, z1)))
-        glEnd()
-
 ###stop_points_3d, particle_points_3d, poly_lines_3d
 particles = []
 for p_point in particle_points_3d:
@@ -241,6 +134,27 @@ for pl in poly_lines_3d:
             constraints.append(c)
         except:
             print("pl error : ",pl[i], pl[i+1])
+
+class Bone:
+    def __init__(self):
+        self.name = None
+        self.ang_x, self.ang_y, self.ang_z = 0, 0, 0
+        self.bias_x, self.bias_y, self.bias_z = 0, 0, 0
+
+        self.wire_buff = np.array([None])
+        self.poly_buff = np.array([None])
+        self.wire_vbo = create_vbo(self.wire_buff, w_ver, w_col, w_ind)
+        self.poly_vbo = create_vbo(self.poly_buff, p_ver, p_col, p_ind)
+
+    def draw(self):
+        pos_proP = (2.4, (Meta_max_cood[1]-0.2)-Meta_angle*0.01, Meta_angle*0.002)
+        glTranslatef(*pos_proP)
+        glRotatef(Meta_angle, 1, 0, 0)
+        glTranslatef(-1.2,0,0)
+        glRotated(Meta_AbdAdd_angle, 0, 0, 1)
+        glTranslatef(-1.2-Meta_AbdAdd_angle*0.003,0,0)
+        draw_vbo(ProP_buff, ProP_ind)
+        draw_vbo(outProP_buff, ProP_ind, mode_front=GL_LINE)
 
 Meta_angle, Meta_AbdAdd_angle, ProP_angle, MidP_angle, DisP_angle = 0., 0., 0., 0., 0.
 Meta, PrxPh, MddPh, DisPh = False, False, False, False
@@ -404,8 +318,8 @@ class DrawWidget(QGLWidget):
                 constraints[ii].update()
 
         ##############################  DRAW BONES  ##############################
-        glPushMatrix();
         ## 中手骨の描画
+        glPushMatrix();
         if not Meta:
             global Meta_buff, outMeta_buff
             if self.Meta_buff.all()==None:
@@ -428,7 +342,7 @@ class DrawWidget(QGLWidget):
             glTranslatef(-1.2-Meta_AbdAdd_angle*0.003,0,0)
             draw_vbo(ProP_buff, ProP_ind)
             draw_vbo(outProP_buff, ProP_ind, mode_front=GL_LINE)
-
+        #"""
         ## 中節骨の描画
         mddp_vias = gaussian_function(sigma=20, mu=60, x=ProP_angle, A=1.7)
         pos_midP = (0, (1.462+1.8)-ProP_angle*0.008, -ProP_angle*0.001+mddp_vias)
@@ -441,17 +355,6 @@ class DrawWidget(QGLWidget):
             glRotatef(ProP_angle+3, 1, 0, 0)
             draw_vbo(MidP_buff, MidP_ind)
             draw_vbo(outMidP_buff, MidP_ind, mode_front=GL_LINE)
-
-            #print(pos_proP[1]+pos_midP[1])
-            glTranslatef(0,pos_proP[1]+pos_midP[1],0)
-            particles[58].draw_sp()
-            particles[58].when_move(0, (1.462+1.8)-ProP_angle*0.008, -ProP_angle*0.001+mddp_vias)
-            particles[22].draw_sp()
-            particles[22].when_move(0, (1.462+1.8)-ProP_angle*0.008, -ProP_angle*0.001+mddp_vias)
-            particles[57].draw_sp()
-            particles[57].when_move(0, (1.462+1.8)-ProP_angle*0.008, -ProP_angle*0.001+mddp_vias)
-            glTranslatef(0,0,0)
-
 
         ## 末節骨の描画
         disp_vias = gaussian_function(sigma=25, mu=70, x=MidP_angle, A=1.9)
@@ -471,8 +374,8 @@ class DrawWidget(QGLWidget):
             particles[21].draw_sp()
             particles[59].draw_sp()
             glTranslatef(0,0,0)
-
         glPopMatrix();
+        #"""
         ##########################################################################
 
         ## 座標の表示    -self.camera_cood[0][0], -self.camera_cood[1][0], -self.camera_cood[2][0]

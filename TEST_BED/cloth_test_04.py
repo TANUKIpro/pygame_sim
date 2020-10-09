@@ -266,6 +266,7 @@ while Running:
     ## constraints_update_time: 1st
     ## particles_draw_time    : 3rd
     ## constraints_draw_time  : 2nd
+    """
     print("\
            1. particles_update_time   : {0}s \n\
            2. constraints_update_time : {1}s \n\
@@ -277,7 +278,7 @@ while Running:
                    particles_draw_time,
                    constraints_draw_time,
                    particles_update_time+constraints_update_time+particles_draw_time+constraints_draw_time))
-
+    """
     past_time = time.time() - start_time
     delay = past_time/delta_t
 

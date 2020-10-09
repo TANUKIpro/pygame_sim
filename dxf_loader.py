@@ -1,10 +1,7 @@
 import numpy as np
 import dxfgrabber
-from decimal import Decimal, ROUND_HALF_UP, ROUND_HALF_EVEN
 from math import floor
-
-#file_name="model/extensor_hood_test001.dxf"
-#file_name="model/extensor_hood_test002.dxf"
+import sys
 
 class DXF_Loader:
     def __init__(self, file_name, extensor_reduced_scale, x_vias, y_vias, z_vias, inversion=1, integer=False):
